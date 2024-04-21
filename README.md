@@ -1,4 +1,4 @@
-# agile_development
+# quality-digital-twin
 ・大学のネットワークに入って、実行してください。
 　※大学のサーバーの中にある、DBを使用しているため
 
