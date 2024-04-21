@@ -175,9 +175,31 @@ def home_layout(project_name=None, category_num=None):
                 width=3,
                 className='text-center',
                 align='center'
-                )
+                ),
+              
               ]
-            )
+            ),
+            html.Hr(),
+          dbc.Row(
+            [
+              dbc.Col(
+                [
+                  dbc.Button(
+                    [
+                      html.Span('NFT', style={'font-size': '30px'}),
+                      html.Span('📃', style={'font-size': '30px'})
+                      ],
+                    color='secondary',
+                    id={'type': 'button', 'index':'nft'},
+                    style={'width': '80%', 'height': '80px'}
+                    )
+                  ],
+                width=3,
+                className='text-center',
+                align='center'
+              )
+            ]
+          )
           ]
         )
       ]
@@ -317,8 +339,15 @@ def updata(n_click, state, sprint, pname):
 
 
 #urlを変更する
+'''
+1. button_listからNoneでない値だけを抽出
+2. 押されたボタンのIDを取得
+3. project_nameとcategoryが指定されている場合、データベースからプロジェクト情報を取得
+4. 取得したプロジェクト情報に基づいて、特定のボタンがクリックされた場合のリダイレクトURLを生成
+5. project_nameとcategoryが指定されていない場合、新しいカテゴリを作成するリダイレクトURLを返す
+'''
 @callback(
-  Output('url', 'pathname'),
+  Output('url', 'href'),
   Input({'type': 'button', 'index': ALL}, 'n_clicks'),
   State('input_project_name', 'value'),
   State('select_category', 'value'),
@@ -348,8 +377,10 @@ def redirect_edit_url(button_list, project_name, category):
         elif button_id == 'dashboard':
           return '/dashboard?&pid=' + pid + '&sprint_num=' + sprint_num + '&category=' + category
         
-    
+
   else:
     if button_id =='category':
       return '/create_category'
+    elif button_id == 'nft':
+      return '/nft'
     return dash.no_update

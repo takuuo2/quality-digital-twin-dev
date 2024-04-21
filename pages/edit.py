@@ -1043,11 +1043,12 @@ def tree_display(node, category, pid,indent=''):
 ●機能：
 ・編集画面のレイアウト
 ●id:
-・select = 品質モデルの利用者から見えるモデル
-・model_free = 品質状態モデルを表示する
-・right_free = データを表示する
+・select = 品質モデルの利用者から見えるモデル（品質特性の選択）
+・model_free = 品質状態モデルを表示する（編集）
+・right_free = データを表示する（実現，活動の情報）
 '''
-def edit_layout(project_name, category_num, sprint_num, state, pid):
+# def edit_layout(project_name, category_num, sprint_num, state, pid):
+def edit_layout(params):
   return dbc.Container(
    [
       dbc.Row(
@@ -1060,10 +1061,10 @@ def edit_layout(project_name, category_num, sprint_num, state, pid):
                     [
                       html.H5('project', style={'flex-direction': 'column', 'backgroundColor': '#2d3748','color': 'white', 'text-align': 'center', 'height': '4vh'}),
                       html.P('project:', style={'display': 'inline-block', 'width': '70px'}),
-                      html.P(project_name, style={'display': 'inline-block', 'width': '200px'}),
+                      html.P(params.get("project_name", "N/A"), style={'display': 'inline-block', 'width': '200px'}),
                       html.P('sprint:', style={'display': 'inline-block', 'width': '70px'}),
-                      html.P(sprint_num, style={'display': 'inline-block', 'width': '30px'}),
-                      html.P(state, style={'display': 'inline-block', 'width': '100px'}),
+                      html.P(params.get("sprint_num", "N/A"), style={'display': 'inline-block', 'width': '30px'}),
+                      html.P(params.get("state", "N/A"), style={'display': 'inline-block', 'width': '100px'}),
                       ]
                     ),
                   dbc.Row(
@@ -1074,8 +1075,9 @@ def edit_layout(project_name, category_num, sprint_num, state, pid):
                   dbc.Row(
                     [
                       dcc.RadioItems(
+                        # setting の品質特性選択欄の押下可否は disabled で (福田)
                         options=[
-                          {'label': '有効性', 'value': '有効性', 'disabled': True},
+                          {'label': '有効性', 'value': '有効性'},
                           {'label': '効率性', 'value': '効率性', 'disabled': True},
                           {'label': '満足性', 'value': '満足性', 'disabled': True},
                           {'label': 'リスク回避性', 'value': 'リスク回避性', 'disabled': True},
@@ -1143,10 +1145,10 @@ def edit_layout(project_name, category_num, sprint_num, state, pid):
   Input({'type': 'radio', 'index': ALL}, 'value'),
   State({'type': 'input', 'index': ALL}, 'value'),
   State({'type': 'dropdown', 'index': ALL}, 'value'),
-  State('url', 'pathname'),
+  State('url', 'href'),
   prevent_initial_call=True
 )
-def up_node(input_value, button_list, radio_list, input_list, drop_list,url):
+def up_node(input_value, button_list, radio_list, input_list, drop_list, url):
   
   if input_value is None:
     return dash.no_update,dash.no_update

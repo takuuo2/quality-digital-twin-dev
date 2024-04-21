@@ -152,17 +152,17 @@ def getBDAchieve(pid,sprint_num):
   return None
 
 #ダッシュボードのレイアウト
-def dashboard_layout(pid,sprint_num,category_num):
+def dashboard_layout(params):
   global testgraph
   global root_dic
   global tables
   testgraph = {}
   root_dic = {}
   tables = {}
-  trend_df = getTrend(pid,sprint_num)
+  trend_df = getTrend(params.get('pid', 'N/A'), params.get('sprint_num', 'N/A'))
   trend = createTrendBar(trend_df)
   achievement, achieve_width = createAchievementView(trend_df)
-  bd_df = getBDAchieve(pid,sprint_num)
+  bd_df = getBDAchieve(params.get('pid', 'N/A'), params.get('sprint_num', 'N/A'))
   #bd_graph = createBDGraph(bd_df)
   #test_df = getTestData()
   #testgraph = createTestGraph(test_df)

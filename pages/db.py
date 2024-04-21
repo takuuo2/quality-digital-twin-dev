@@ -25,7 +25,7 @@ def read_support(select):
   return df
 
 #ページのレイアウト
-def db_layout(pid):
+def db_layout(params):
   return html.Div(
     [
       dbc.Row(
@@ -35,8 +35,8 @@ def db_layout(pid):
               html.H5('<Project>'),
               DataTable(
                 id='datatable-interactivity',
-                columns=[{'name': i, 'id': i} for i in read_project('SELECT * FROM project WHERE pid = %s',pid).columns],
-                data=read_project('SELECT * FROM project WHERE pid = %s',pid).to_dict('records'),
+                columns=[{'name': i, 'id': i} for i in read_project('SELECT * FROM project WHERE pid = %s', params.get('pid', 'N/A')).columns],
+                data=read_project('SELECT * FROM project WHERE pid = %s', params.get('pid', 'N/A')).to_dict('records'),
                 editable=False,
                 row_deletable=False,
                 filter_action='none',
@@ -97,8 +97,8 @@ def db_layout(pid):
               html.H5('<qualitynode>'),
               DataTable(
                 id='datatable-interactivity4',
-                columns=[{'name': i, 'id': i} for i in read_qualitynode('SELECT * FROM qualitynode WHERE pid = %s',pid).columns],
-                data=read_qualitynode('SELECT * FROM qualitynode WHERE pid = %s',pid).to_dict('records'),
+                columns=[{'name': i, 'id': i} for i in read_qualitynode('SELECT * FROM qualitynode WHERE pid = %s', params.get('pid', 'N/A')).columns],
+                data=read_qualitynode('SELECT * FROM qualitynode WHERE pid = %s', params.get('pid', 'N/A')).to_dict('records'),
                 editable=False,
                 row_deletable=False,
                 filter_action='native',
