@@ -8,8 +8,8 @@ import re
 from .core import write_db,node_calculation
 import plotly.graph_objs as go
 import sqlite3
-
-
+import dash_draggable
+from dash.exceptions import PreventUpdate
 #Excelのファイル名とシート名
 e_base = '保守性_DB.xlsx'
 e_square = 'SQuaRE'
@@ -1047,6 +1047,54 @@ def tree_display(node, category, pid,indent=''):
 ・model_free = 品質状態モデルを表示する（編集）
 ・right_free = データを表示する（実現，活動の情報）
 '''
+list_ex = [
+    {'name': 'aaa', 'cost': 5, 'parent': '保守性'},
+    {'name': 'bbb', 'cost': 10, 'parent': '保守性'},
+    {'name': 'ccc', 'cost': 15, 'parent': '修正性'},
+    {'name': 'ddd', 'cost': 20, 'parent': '保守性'},
+    {'name': 'eee', 'cost': 25, 'parent': '再利用性'},
+    {'name': 'fff', 'cost': 30, 'parent': '保守性'},
+    {'name': 'ggg', 'cost': 35, 'parent': '再利用性'},
+    {'name': 'hhh', 'cost': 40, 'parent': '試験性'},
+    {'name': 'iii', 'cost': 45, 'parent': '保守性'},
+    {'name': 'jjj', 'cost': 50, 'parent': '解析性'},
+    {'name': 'kkk', 'cost': 55, 'parent': '保守性'}
+]
+
+
+# 辞書のリストをカードに変換する関数
+def create_list_items(items):
+    return [
+        html.Button(
+            html.Div(
+                dbc.Row(
+                    [
+                        dbc.Col(
+                            html.Div(item['parent'], style={'width': '100%', 'height': '100%', 'border': '1px solid #000', 'padding': '10px', 'text-align': 'center', 'background-color': 'blue', 'color': 'white', 'font-weight': 'bold'}),
+                            width=2  
+                        ),
+                        dbc.Col(
+                            html.Div(item['name'], style={'width': '100%', 'height': '100%', 'border': '1px solid #000', 'padding': '10px', 'text-align': 'center', 'background-color': 'dodgerblue', 'color': 'white', 'font-weight': 'bold'}),
+                            width=6  
+                        ),
+                        dbc.Col(
+                            html.Div(f"{item['cost']} MH", style={'width': '70px', 'height': '70px', 'borderRadius': '50%', 'border': '1px solid #000', 'padding': '10px', 'display': 'flex', 'align-items': 'center', 'justify-content': 'center', 'background-color': 'green', 'color': 'white', 'font-weight': 'bold'}),
+                            width=2  
+                        )
+                    ],
+                    align='center'
+                ),
+                className="mb-2",
+                style={'width': '100%', 'margin': 'auto'}  
+            ),
+            id={'type': 'card', 'index': i},
+            style={'border': 'none', 'background': 'none', 'padding': '0', 'width': '100%', 'marginBottom': '10px'}
+        ) for i, item in enumerate(items)
+    ]
+
+
+
+
 # def edit_layout(project_name, category_num, sprint_num, state, pid):
 def edit_layout(params):
   return dbc.Container(
@@ -1108,7 +1156,42 @@ def edit_layout(params):
                   dbc.Row(
                     id='model_free',
                     style={'overflow': 'scroll','overflowX': 'scroll','overflowY': 'scroll', 'height': '90vh', 'whiteSpace': 'nowrap', 'overflowWrap': 'normal'}
-                    )
+                    ),
+                  dbc.Row([
+                    dbc.Col(
+                      [
+                          dbc.Button(
+                              "計画",
+                              id="open-body-scroll",
+                              n_clicks=0,
+                              style={'width': '50%', 'margin' : 'auto'}
+                          ),
+                          dbc.Modal(
+                              [
+                                  dbc.ModalHeader(
+                                      dbc.ModalTitle("計画画面")
+                                  ),
+                                  dbc.ModalBody(create_list_items(list_ex), id='modal-body-content'),
+                                  html.Div(id='total-cost', style={'border': '1px solid #000', 'padding': '10px', 'marginTop': '20px', 'textAlign': 'center', 'font-weight': 'bold'}),
+                                  dbc.ModalFooter(
+                                      dbc.Button(
+                                          "キャンセル",
+                                          id="close-body-scroll",
+                                          className="ms-auto",
+                                          n_clicks=0,
+                                      )
+                                  ),
+                              ],
+                              id="modal-body-scroll",
+                              scrollable=True,
+                              is_open=False,
+                              size="xl",
+                               
+                          ),
+                      ]
+                  )
+                  ])
+                  
                   ]
                 )
               ], 
@@ -1135,6 +1218,43 @@ def edit_layout(params):
       ],
     fluid=True
     )
+
+
+
+
+
+@callback(
+    Output("modal-body-scroll", "is_open"),
+    [Input("open-body-scroll", "n_clicks"), Input("close-body-scroll", "n_clicks")],
+    [State("modal-body-scroll", "is_open")],
+)
+def toggle_modal(n1, n2, is_open):
+    if n1 or n2:
+        return not is_open
+    return is_open
+
+@callback(
+    [Output({'type': 'card', 'index': ALL}, 'style'),
+     Output('total-cost', 'children')],
+    [Input({'type': 'card', 'index': ALL}, 'n_clicks')],
+    [State({'type': 'card', 'index': ALL}, 'style')],
+)
+def update_selection(n_clicks, styles):
+    if not n_clicks:
+        raise PreventUpdate
+
+    total_cost = 0
+    new_styles = []
+
+    for i, clicks in enumerate(n_clicks):
+        if clicks and clicks % 2 == 1:  
+            styles[i]['backgroundColor'] = '#d3d3d3'
+            total_cost += list_ex[i]['cost']
+        else:
+            styles[i]['backgroundColor'] = 'white'
+        new_styles.append(styles[i])
+
+    return new_styles, f"Total Cost: {total_cost} MH"
 
 
 @callback(
@@ -1298,4 +1418,3 @@ def up_node(input_value, button_list, radio_list, input_list, drop_list, url):
           else:
             continue
     return dash.no_update,dash.no_update
-    
