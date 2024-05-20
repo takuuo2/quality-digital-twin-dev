@@ -5,7 +5,7 @@ from dash.dependencies import Input, Output, State, ALL
 from matplotlib import category
 import pandas as pd
 import re
-from .core import write_db,node_calculation
+from .core import write_db,node_calculation,node_create
 import plotly.graph_objs as go
 import sqlite3
 import dash_draggable
@@ -1047,19 +1047,37 @@ def tree_display(node, category, pid,indent=''):
 ・model_free = 品質状態モデルを表示する（編集）
 ・right_free = データを表示する（実現，活動の情報）
 '''
-list_ex = [
-    {'name': 'aaa', 'cost': 5, 'parent': '保守性'},
-    {'name': 'bbb', 'cost': 10, 'parent': '保守性'},
-    {'name': 'ccc', 'cost': 15, 'parent': '修正性'},
-    {'name': 'ddd', 'cost': 20, 'parent': '保守性'},
-    {'name': 'eee', 'cost': 25, 'parent': '再利用性'},
-    {'name': 'fff', 'cost': 30, 'parent': '保守性'},
-    {'name': 'ggg', 'cost': 35, 'parent': '再利用性'},
-    {'name': 'hhh', 'cost': 40, 'parent': '試験性'},
-    {'name': 'iii', 'cost': 45, 'parent': '保守性'},
-    {'name': 'jjj', 'cost': 50, 'parent': '解析性'},
-    {'name': 'kkk', 'cost': 55, 'parent': '保守性'}
-]
+# list_ex = [
+#     {'name': 'aaa', 'cost': 5, 'parent': '保守性'},
+#     {'name': 'bbb', 'cost': 10, 'parent': '保守性'},
+#     {'name': 'ccc', 'cost': 15, 'parent': '修正性'},
+#     {'name': 'ddd', 'cost': 20, 'parent': '保守性'},
+#     {'name': 'eee', 'cost': 25, 'parent': '再利用性'},
+#     {'name': 'fff', 'cost': 30, 'parent': '保守性'},
+#     {'name': 'ggg', 'cost': 35, 'parent': '再利用性'},
+#     {'name': 'hhh', 'cost': 40, 'parent': '試験性'},
+#     {'name': 'iii', 'cost': 45, 'parent': '保守性'},
+#     {'name': 'jjj', 'cost': 50, 'parent': '解析性'},
+#     {'name': 'kkk', 'cost': 55, 'parent': '保守性'}
+# ]
+def create_list_from_activities(activities):
+    result = []
+    for activity in activities:
+        content = activity.content
+        if isinstance(content, dict) and 'subchar' in content:
+            result.append({'name': content['subchar'], 'cost': 5, 'parent': '保守性'})
+        else:
+            # contentが辞書でない場合、もしくは 'subchar' が辞書にない場合の対処
+            # 適宜処理を追加する。例えば、デフォルト値を使う:
+            result.append({'name': '不明', 'cost': 5, 'parent': '保守性'})
+    return result
+
+
+# 品質活動からachievementが1ではないノードを取得
+non_achieved_activities = node_create.QualityActivity.get_non_achieved_activities()
+
+# ノードからリストを作成
+list_ex = create_list_from_activities(non_achieved_activities)
 
 
 # 辞書のリストをカードに変換する関数
