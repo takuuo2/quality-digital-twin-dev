@@ -1060,18 +1060,22 @@ def tree_display(node, category, pid,indent=''):
 #     {'name': 'jjj', 'cost': 50, 'parent': '解析性'},
 #     {'name': 'kkk', 'cost': 55, 'parent': '保守性'}
 # ]
+
 def create_list_from_activities(activities):
     result = []
+    all_requirements = node_create.QualityRequirement.get_quality_requirements()
+
     for activity in activities:
         content = activity.content
-        if isinstance(content, dict) and 'subchar' in content:
-            result.append({'name': content['subchar'], 'cost': 5, 'parent': '保守性'})
-        else:
-            # contentが辞書でない場合、もしくは 'subchar' が辞書にない場合の対処
-            # 適宜処理を追加する。例えば、デフォルト値を使う:
-            result.append({'name': '不明', 'cost': 5, 'parent': '保守性'})
-    return result
+        requirement = next((req for req in all_requirements if req.cid == activity.cid), None)
+        parent_statement = requirement.content.get('statement', '不明') if requirement else '不明'
 
+        if isinstance(content, dict) and 'subchar' in content:
+            result.append({'name': content['subchar'], 'cost': 5, 'parent': parent_statement})
+        else:
+            result.append({'name': '不明', 'cost': 5, 'parent': parent_statement})
+
+    return result
 
 # 品質活動からachievementが1ではないノードを取得
 non_achieved_activities = node_create.QualityActivity.get_non_achieved_activities()
@@ -1089,11 +1093,11 @@ def create_list_items(items):
                     [
                         dbc.Col(
                             html.Div(item['parent'], style={'width': '100%', 'height': '100%', 'border': '1px solid #000', 'padding': '10px', 'text-align': 'center', 'background-color': 'blue', 'color': 'white', 'font-weight': 'bold'}),
-                            width=2  
+                            width=4  
                         ),
                         dbc.Col(
                             html.Div(item['name'], style={'width': '100%', 'height': '100%', 'border': '1px solid #000', 'padding': '10px', 'text-align': 'center', 'background-color': 'dodgerblue', 'color': 'white', 'font-weight': 'bold'}),
-                            width=6  
+                            width=4  
                         ),
                         dbc.Col(
                             html.Div(f"{item['cost']} MH", style={'width': '70px', 'height': '70px', 'borderRadius': '50%', 'border': '1px solid #000', 'padding': '10px', 'display': 'flex', 'align-items': 'center', 'justify-content': 'center', 'background-color': 'green', 'color': 'white', 'font-weight': 'bold'}),
