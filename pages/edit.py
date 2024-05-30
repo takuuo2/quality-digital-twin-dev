@@ -1061,27 +1061,44 @@ def tree_display(node, category, pid,indent=''):
 #     {'name': 'kkk', 'cost': 55, 'parent': '保守性'}
 # ]
 
-def create_list_from_activities(activities):
+def create_list_from_activities(activities, nodes):
     result = []
-    all_requirements = node_create.QualityRequirement.get_quality_requirements()
-
+    
+    # ノードの辞書を作成して、nidで検索しやすくする
+    node_dict = {node.nid: node for node in nodes}
+    
     for activity in activities:
-        content = activity.content
-        requirement = next((req for req in all_requirements if req.cid == activity.cid), None)
-        parent_statement = requirement.content.get('statement', '不明') if requirement else '不明'
+        content = activity.task
+        parent_statement = None
+        parent_subchar = None
+        # print(activity)
+        # 親ノードの情報を取得
+        if activity.parents:
+            parent_nid = activity.parents[0]
+            parent_node = node_dict.get(parent_nid)
+            if parent_node and isinstance(parent_node.task, dict):
+                parent_statement = parent_node.task.get('statement')
+                parent_subchar = parent_node.task.get('subchar')
+            else:
+              print("false2")
+        # else:
+          # print("false")
 
         if isinstance(content, dict) and 'subchar' in content:
-            result.append({'name': content['subchar'], 'cost': 5, 'parent': parent_statement})
+            result.append({'name': content['subchar'], 'cost': 5, 'parent': parent_subchar, 'statement': parent_statement})
         else:
-            result.append({'name': '不明', 'cost': 5, 'parent': parent_statement})
+            result.append({'name': '不明', 'cost': 5, 'parent': parent_subchar, 'statement': parent_statement})
 
     return result
 
 # 品質活動からachievementが1ではないノードを取得
 non_achieved_activities = node_create.QualityActivity.get_non_achieved_activities()
 
+# 全てのノードを取得
+all_nodes = node_create.QualityNode.fetch_all_nodes()
+
 # ノードからリストを作成
-list_ex = create_list_from_activities(non_achieved_activities)
+list_ex = create_list_from_activities(non_achieved_activities, all_nodes)
 
 
 # 辞書のリストをカードに変換する関数
@@ -1092,7 +1109,13 @@ def create_list_items(items):
                 dbc.Row(
                     [
                         dbc.Col(
-                            html.Div(item['parent'], style={'width': '100%', 'height': '100%', 'border': '1px solid #000', 'padding': '10px', 'text-align': 'center', 'background-color': 'blue', 'color': 'white', 'font-weight': 'bold'}),
+                            html.Div(
+                                [
+                                    html.Div(item['parent'], style={'font-size': '18px', 'font-weight': 'bold'}),
+                                    html.Div(item['statement'], style={'font-size': '14px', 'font-weight': 'normal'})
+                                ],
+                                style={'width': '100%', 'height': '100%', 'border': '1px solid #000', 'padding': '10px', 'text-align': 'center', 'background-color': 'blue', 'color': 'white'}
+                            ),
                             width=4  
                         ),
                         dbc.Col(
@@ -1113,7 +1136,6 @@ def create_list_items(items):
             style={'border': 'none', 'background': 'none', 'padding': '0', 'width': '100%', 'marginBottom': '10px'}
         ) for i, item in enumerate(items)
     ]
-
 
 
 
