@@ -1078,6 +1078,8 @@ def create_list_from_activities(activities, nodes):
             parent_node = node_dict.get(parent_nid)
             if parent_node and isinstance(parent_node.task, dict):
                 parent_statement = parent_node.task.get('statement')
+                # 親ノード確認デバック用
+                # parent_subchar = parent_node.nid
                 parent_subchar = parent_node.task.get('subchar')
             else:
               print("false2")
@@ -1086,8 +1088,8 @@ def create_list_from_activities(activities, nodes):
 
         if isinstance(content, dict) and 'subchar' in content:
             result.append({'name': content['subchar'], 'cost': 5, 'parent': parent_subchar, 'statement': parent_statement})
-        else:
-            result.append({'name': '不明', 'cost': 5, 'parent': parent_subchar, 'statement': parent_statement})
+        # else:
+            # result.append({'name': '不明', 'cost': 5, 'parent': parent_subchar, 'statement': parent_statement})
 
     return result
 
@@ -1215,15 +1217,38 @@ def edit_layout(params):
                                   dbc.ModalHeader(
                                       dbc.ModalTitle("計画画面")
                                   ),
-                                  dbc.ModalBody(create_list_items(list_ex), id='modal-body-content'),
+                                  dbc.ModalBody(
+                                      dbc.Row(
+                                          [
+                                              dbc.Col(
+                                                  create_list_items(list_ex), 
+                                                  width=7
+                                              ),
+                                              dbc.Col(
+                                                  html.Div(id='additional-ui', style={'height': '100%', 'background-color': 'lightgrey'}), 
+                                                  width=5
+                                              )
+                                          ]
+                                      ), 
+                                      id='modal-body-content'
+                                  ),
                                   html.Div(id='total-cost', style={'border': '1px solid #000', 'padding': '10px', 'marginTop': '20px', 'textAlign': 'center', 'font-weight': 'bold'}),
                                   dbc.ModalFooter(
+                                    [
                                       dbc.Button(
-                                          "キャンセル",
-                                          id="close-body-scroll",
-                                          className="ms-auto",
-                                          n_clicks=0,
-                                      )
+                                            "キャンセル",
+                                            id="close-body-scroll",
+                                            className="me-2",
+                                            n_clicks=0,
+                                        ),
+                                        dbc.Button(
+                                          "確定",
+                                          id="confirm-button",
+                                          className="ms-2",
+                                          n_clicks=0,                                        
+                                        )
+                                    ],
+                                    className="d-flex justify-content-end"
                                   ),
                               ],
                               id="modal-body-scroll",
@@ -1269,14 +1294,26 @@ def edit_layout(params):
 
 @callback(
     Output("modal-body-scroll", "is_open"),
-    [Input("open-body-scroll", "n_clicks"), Input("close-body-scroll", "n_clicks")],
-    [State("modal-body-scroll", "is_open")],
+    [Input("open-body-scroll", "n_clicks"), Input("close-body-scroll", "n_clicks"),Input("confirm-button", "n_clicks")],
+    [State("modal-body-scroll", "is_open"),State({'type': 'card', 'index': ALL}, 'style')],
 )
-def toggle_modal(n1, n2, is_open):
-    if n1 or n2:
-        return not is_open
-    return is_open
+def toggle_modal(open_clicks, close_clicks, confirm_clicks, is_open, card_styles):
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        return is_open
 
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    if button_id == "open-body-scroll":
+        return True
+    elif button_id == "close-body-scroll":
+        return False
+    elif button_id == "confirm-button":
+        # 確認ボタンが押されたときの処理
+        # 必要な処理をここに追加
+        return False
+
+    return is_open
 @callback(
     [Output({'type': 'card', 'index': ALL}, 'style'),
      Output('total-cost', 'children')],

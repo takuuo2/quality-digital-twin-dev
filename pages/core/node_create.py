@@ -50,7 +50,7 @@ class QualityNode:
                 destination, source, contribution = support
                 if destination == node.nid:
                     # print(source)
-                    # print(node_dict[source].type)
+                    # print(node_dict[source])
                     while source in node_dict and node_dict[source].type != 'REQ':
                         # sourceの値をdestinationに移して再検索
                         next_source = next((s[1] for s in node_support if s[0] == source), None)
