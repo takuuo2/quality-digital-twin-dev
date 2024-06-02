@@ -1047,19 +1047,7 @@ def tree_display(node, category, pid,indent=''):
 ・model_free = 品質状態モデルを表示する（編集）
 ・right_free = データを表示する（実現，活動の情報）
 '''
-# list_ex = [
-#     {'name': 'aaa', 'cost': 5, 'parent': '保守性'},
-#     {'name': 'bbb', 'cost': 10, 'parent': '保守性'},
-#     {'name': 'ccc', 'cost': 15, 'parent': '修正性'},
-#     {'name': 'ddd', 'cost': 20, 'parent': '保守性'},
-#     {'name': 'eee', 'cost': 25, 'parent': '再利用性'},
-#     {'name': 'fff', 'cost': 30, 'parent': '保守性'},
-#     {'name': 'ggg', 'cost': 35, 'parent': '再利用性'},
-#     {'name': 'hhh', 'cost': 40, 'parent': '試験性'},
-#     {'name': 'iii', 'cost': 45, 'parent': '保守性'},
-#     {'name': 'jjj', 'cost': 50, 'parent': '解析性'},
-#     {'name': 'kkk', 'cost': 55, 'parent': '保守性'}
-# ]
+
 
 def create_list_from_activities(activities, nodes):
     result = []
@@ -1221,11 +1209,27 @@ def edit_layout(params):
                                       dbc.Row(
                                           [
                                               dbc.Col(
-                                                  create_list_items(list_ex), 
+                                                  html.Div(
+                                                      create_list_items(list_ex),
+                                                      style={'max-height': '70vh', 'overflow-y': 'auto'}  
+                                                  ), 
                                                   width=7
                                               ),
                                               dbc.Col(
-                                                  html.Div(id='additional-ui', style={'height': '100%', 'background-color': 'lightgrey'}), 
+                                                  html.Div(
+                                                      [
+                                                          dcc.Dropdown(
+                                                              id='person-select',
+                                                              options=[
+                                                                  {'label': f'{i} 人', 'value': i} for i in range(1, 100)
+                                                              ],
+                                                              value=1
+                                                          ),
+                                                          html.Div(id='total-person-cost', style={'border': '1px solid #000', 'padding': '10px', 'marginTop': '20px', 'textAlign': 'center', 'font-weight': 'bold'}),
+                                                          html.Div(id='remaining-person-cost', style={'border': '1px solid #000', 'padding': '10px', 'marginTop': '20px', 'textAlign': 'center', 'font-weight': 'bold'})
+                                                      ],
+                                                      style={'height': '100%'}
+                                                  ),
                                                   width=5
                                               )
                                           ]
@@ -1252,7 +1256,7 @@ def edit_layout(params):
                                   ),
                               ],
                               id="modal-body-scroll",
-                              scrollable=True,
+                              scrollable=False,
                               is_open=False,
                               size="xl",
                                
@@ -1336,7 +1340,25 @@ def update_selection(n_clicks, styles):
         new_styles.append(styles[i])
 
     return new_styles, f"Total Cost: {total_cost} MH"
+@callback(
+    [Output('total-person-cost', 'children'),
+     Output('remaining-person-cost', 'children')],
+    [Input('person-select', 'value'),
+     Input('total-cost', 'children')]
+)
+def update_person_cost(selected_person, total_cost_text):
+    if not total_cost_text:
+        raise PreventUpdate
+    
+    total_cost_mh = int(total_cost_text.split(":")[1].strip().split()[0])
+    person_months = selected_person * 40
+    remaining_months = person_months - total_cost_mh
+    total_person_months_text = f"{selected_person} × 40MH = {person_months}MH"
 
+    return (
+        f"Total Person-Months: {total_person_months_text}",
+        f"Remaining Person-Months: {remaining_months} 人月"
+    )
 
 @callback(
   Output('model_free', 'children'),

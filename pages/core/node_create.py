@@ -55,7 +55,8 @@ class QualityNode:
                         # sourceの値をdestinationに移して再検索
                         next_source = next((s[1] for s in node_support if s[0] == source), None)
                         if next_source is None:
-                            print('miss')
+                            #デバック用
+                            # print('miss')
                             break
                         source = next_source
 
@@ -68,7 +69,8 @@ class QualityNode:
                 destination, source, contribution = support
                 if source == node.nid:
                     node.children.append(destination)
-            print(f"Node {node.nid} parents: {node.parents}, children: {node.children}, type: {node.type}")
+            #デバック用
+            # print(f"Node {node.nid} parents: {node.parents}, children: {node.children}, type: {node.type}")
         
         return nodes
 
