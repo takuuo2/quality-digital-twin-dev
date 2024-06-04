@@ -358,7 +358,7 @@ def message_display(node,pid):
             [
               dbc.Col(
                 [
-                  dbc.Label('<実現例>',style={'fontSize': 15,'fontWeight': 'bold'}),
+                  dbc.Label('<実現手段一覧>',style={'fontSize': 15,'fontWeight': 'bold'}),
                   ],
                 className='text-center',
                 width=2,
@@ -377,7 +377,7 @@ def message_display(node,pid):
             [
               dbc.Col(
                 [
-                  dbc.Label('<実現手法入力>',style={'fontSize': 15, 'fontWeight': 'bold', 'color': 'red'}),
+                  dbc.Label('<実現手段入力>',style={'fontSize': 15, 'fontWeight': 'bold', 'color': 'red'}),
                   ],
                 className='text-center',
                 width=2,
@@ -1092,45 +1092,109 @@ list_ex = create_list_from_activities(non_achieved_activities, all_nodes)
 
 
 # 辞書のリストをカードに変換する関数
-def create_list_items(items):
+def create_list_items(items, members):
     return [
-        html.Button(
-            html.Div(
-                dbc.Row(
-                    [
-                        dbc.Col(
+        html.Div(
+            dbc.Row(
+                [
+                    dbc.Col(
+                        html.Button(
                             html.Div(
-                                [
-                                    html.Div(item['parent'], style={'font-size': '18px', 'font-weight': 'bold'}),
-                                    html.Div(item['statement'], style={'font-size': '14px', 'font-weight': 'normal'})
-                                ],
-                                style={'width': '100%', 'height': '100%', 'border': '1px solid #000', 'padding': '10px', 'text-align': 'center', 'background-color': 'blue', 'color': 'white'}
+                                dbc.Row(
+                                    [
+                                        dbc.Col(
+                                            html.Div(
+                                                [
+                                                    html.Div(item['parent'], style={'font-size': '18px', 'font-weight': 'bold'}),
+                                                    html.Div(item['statement'], style={'font-size': '14px', 'font-weight': 'normal'})
+                                                ],
+                                                style={'width': '100%', 'height': '100%', 'border': '1px solid #000', 'padding': '10px', 'text-align': 'center', 'background-color': 'blue', 'color': 'white'}
+                                            ),
+                                            width=4
+                                        ),
+                                        dbc.Col(
+                                            html.Div(item['name'], style={'width': '100%', 'height': '100%', 'border': '1px solid #000', 'padding': '10px', 'text-align': 'center', 'background-color': 'dodgerblue', 'color': 'white', 'font-weight': 'bold'}),
+                                            width=4
+                                        ),
+                                        dbc.Col(
+                                            html.Div(f"{item['cost']} MH", style={'width': '70px', 'height': '70px', 'borderRadius': '50%', 'border': '1px solid #000', 'padding': '10px', 'display': 'flex', 'align-items': 'center', 'justify-content': 'center', 'background-color': 'green', 'color': 'white', 'font-weight': 'bold'}),
+                                            width=2
+                                        )
+                                    ],
+                                    align='center'
+                                ),
+                                className="mb-2",
+                                style={'width': '100%', 'margin': 'auto'}
                             ),
-                            width=4  
+                            id={'type': 'card', 'index': i},
+                            style={'border': 'none', 'background': 'none', 'padding': '0', 'width': '100%', 'marginBottom': '10px'}
                         ),
-                        dbc.Col(
-                            html.Div(item['name'], style={'width': '100%', 'height': '100%', 'border': '1px solid #000', 'padding': '10px', 'text-align': 'center', 'background-color': 'dodgerblue', 'color': 'white', 'font-weight': 'bold'}),
-                            width=4  
+                        width=10  # ボタン部分の幅を設定
+                    ),
+                    dbc.Col(
+                        dcc.Dropdown(
+                            id={'type': 'dropdown', 'index': i},  # インデックスを文字列に変換してIDを指定
+                            options=[{'label': member['Name'], 'value': member['Name']} for member in members],
+                            placeholder="Select member",
+                            style={'width': '100%', 'display': 'none'},  # 初期状態は非表示
                         ),
-                        dbc.Col(
-                            html.Div(f"{item['cost']} MH", style={'width': '70px', 'height': '70px', 'borderRadius': '50%', 'border': '1px solid #000', 'padding': '10px', 'display': 'flex', 'align-items': 'center', 'justify-content': 'center', 'background-color': 'green', 'color': 'white', 'font-weight': 'bold'}),
-                            width=2  
-                        )
-                    ],
-                    align='center'
-                ),
+                        width=2,  # ドロップダウン部分の幅を設定
+                    )
+                ],
+                align='center',
                 className="mb-2",
-                style={'width': '100%', 'margin': 'auto'}  
-            ),
-            id={'type': 'card', 'index': i},
-            style={'border': 'none', 'background': 'none', 'padding': '0', 'width': '100%', 'marginBottom': '10px'}
+                style={'width': '100%', 'margin': 'auto'}
+            )
         ) for i, item in enumerate(items)
     ]
 
 
 
+    
+# モーダルウィンドウ内の要素を作成する関数
+def create_modal_content(list_ex, members):
+    return dbc.Row(
+        [
+            dbc.Col(
+                html.Div(
+                    create_list_items(list_ex, members),
+                    style={'max-height': '70vh', 'overflow-y': 'auto'}  
+                ), 
+                width=7
+            ),
+            dbc.Col(
+                html.Div(
+                    [
+                        dcc.Dropdown(
+                            id='person-select',
+                            options=[
+                                {'label': f'{i} 人', 'value': i} for i in range(1, 100)
+                            ],
+                            value=1
+                        ),
+                        html.Div(id='total-person-cost', style={'border': '1px solid #000', 'padding': '10px', 'marginTop': '20px', 'textAlign': 'center', 'font-weight': 'bold'}),
+                        html.Div(id='remaining-person-cost', style={'border': '1px solid #000', 'padding': '10px', 'marginTop': '20px', 'textAlign': 'center', 'font-weight': 'bold'})
+                    ],
+                    style={'height': '100%'}
+                ),
+                width=5
+            )
+        ]
+    )
+
+
+members = [
+    {"MID": 1, "PID": 101, "SprintResource": 50, "ResourceUsed": 30, "Name": "豊洲"},
+    {"MID": 2, "PID": 101, "SprintResource": 60, "ResourceUsed": 20, "Name": "月島"},
+    {"MID": 3, "PID": 101, "SprintResource": 70, "ResourceUsed": 40, "Name": "新木場"},
+    {"MID": 4, "PID": 101, "SprintResource": 80, "ResourceUsed": 50, "Name": "渋谷"},
+    {"MID": 5, "PID": 101, "SprintResource": 90, "ResourceUsed": 60, "Name": "新宿"}
+]
+
 # def edit_layout(project_name, category_num, sprint_num, state, pid):
 def edit_layout(params):
+  
+
   return dbc.Container(
    [
       dbc.Row(
@@ -1172,33 +1236,15 @@ def edit_layout(params):
                         )     
                       ],
                     style={'margin': '0', 'background-color': 'white'}
-                    )
-                  ]
-                )
-              ],
-            width=2
-            ),
-          dbc.Col(
-            [
-              html.Div(
-                [
-                  dbc.Row(
-                    [
-                      html.H5('model', style={'flex-direction': 'column', 'backgroundColor': 'black','color': 'white', 'text-align': 'center', 'height': '4vh'}),
-                      ]
-                    ),
-                  dbc.Row(
-                    id='model_free',
-                    style={'overflow': 'scroll','overflowX': 'scroll','overflowY': 'scroll', 'height': '90vh', 'whiteSpace': 'nowrap', 'overflowWrap': 'normal'}
                     ),
                   dbc.Row([
                     dbc.Col(
                       [
                           dbc.Button(
-                              "計画",
+                              "スプリント計画",
                               id="open-body-scroll",
                               n_clicks=0,
-                              style={'width': '50%', 'margin' : 'auto'}
+                              style={'width': '100%'}
                           ),
                           dbc.Modal(
                               [
@@ -1206,34 +1252,7 @@ def edit_layout(params):
                                       dbc.ModalTitle("計画画面")
                                   ),
                                   dbc.ModalBody(
-                                      dbc.Row(
-                                          [
-                                              dbc.Col(
-                                                  html.Div(
-                                                      create_list_items(list_ex),
-                                                      style={'max-height': '70vh', 'overflow-y': 'auto'}  
-                                                  ), 
-                                                  width=7
-                                              ),
-                                              dbc.Col(
-                                                  html.Div(
-                                                      [
-                                                          dcc.Dropdown(
-                                                              id='person-select',
-                                                              options=[
-                                                                  {'label': f'{i} 人', 'value': i} for i in range(1, 100)
-                                                              ],
-                                                              value=1
-                                                          ),
-                                                          html.Div(id='total-person-cost', style={'border': '1px solid #000', 'padding': '10px', 'marginTop': '20px', 'textAlign': 'center', 'font-weight': 'bold'}),
-                                                          html.Div(id='remaining-person-cost', style={'border': '1px solid #000', 'padding': '10px', 'marginTop': '20px', 'textAlign': 'center', 'font-weight': 'bold'})
-                                                      ],
-                                                      style={'height': '100%'}
-                                                  ),
-                                                  width=5
-                                              )
-                                          ]
-                                      ), 
+                                      create_modal_content(list_ex, members), 
                                       id='modal-body-content'
                                   ),
                                   html.Div(id='total-cost', style={'border': '1px solid #000', 'padding': '10px', 'marginTop': '20px', 'textAlign': 'center', 'font-weight': 'bold'}),
@@ -1262,9 +1281,26 @@ def edit_layout(params):
                                
                           ),
                       ]
-                  )
+                    )
                   ])
-                  
+                  ]
+                )
+              ],
+            width=2
+            ),
+          dbc.Col(
+            [
+              html.Div(
+                [
+                  dbc.Row(
+                    [
+                      html.H5('model', style={'flex-direction': 'column', 'backgroundColor': 'black','color': 'white', 'text-align': 'center', 'height': '4vh'}),
+                      ]
+                    ),
+                  dbc.Row(
+                    id='model_free',
+                    style={'overflow': 'scroll','overflowX': 'scroll','overflowY': 'scroll', 'height': '90vh', 'whiteSpace': 'nowrap', 'overflowWrap': 'normal'}
+                    )                  
                   ]
                 )
               ], 
@@ -1316,30 +1352,46 @@ def toggle_modal(open_clicks, close_clicks, confirm_clicks, is_open, card_styles
         # 確認ボタンが押されたときの処理
         # 必要な処理をここに追加
         return False
-
     return is_open
+  
+
 @callback(
     [Output({'type': 'card', 'index': ALL}, 'style'),
-     Output('total-cost', 'children')],
+     Output('total-cost', 'children'),
+     Output({'type': 'dropdown', 'index': ALL}, 'style')],
     [Input({'type': 'card', 'index': ALL}, 'n_clicks')],
-    [State({'type': 'card', 'index': ALL}, 'style')],
+    [State({'type': 'card', 'index': ALL}, 'style'),
+     State({'type': 'dropdown', 'index': ALL}, 'style')],
 )
-def update_selection(n_clicks, styles):
+def update_selection(n_clicks, card_styles, dropdown_styles):
     if not n_clicks:
         raise PreventUpdate
 
     total_cost = 0
-    new_styles = []
+    new_card_styles = []
+    new_dropdown_styles = []
+
+    # リストの長さを合わせる
+    num_items = len(n_clicks)
+    if len(card_styles) < num_items:
+        card_styles.extend([{} for _ in range(num_items - len(card_styles))])
+    if len(dropdown_styles) < num_items:
+        dropdown_styles.extend([{} for _ in range(num_items - len(dropdown_styles))])
 
     for i, clicks in enumerate(n_clicks):
-        if clicks and clicks % 2 == 1:  
-            styles[i]['backgroundColor'] = '#d3d3d3'
+        if clicks and clicks % 2 == 1:
+            card_styles[i]['backgroundColor'] = '#d3d3d3'
+            dropdown_styles[i]['display'] = 'block'  # プルダウンを表示
             total_cost += list_ex[i]['cost']
         else:
-            styles[i]['backgroundColor'] = 'white'
-        new_styles.append(styles[i])
+            card_styles[i]['backgroundColor'] = 'white'
+            dropdown_styles[i]['display'] = 'none'  # プルダウンを非表示
+        new_card_styles.append(card_styles[i])
+        new_dropdown_styles.append(dropdown_styles[i])
 
-    return new_styles, f"Total Cost: {total_cost} MH"
+    return new_card_styles, f"Total Cost: {total_cost} MH", new_dropdown_styles
+
+
 @callback(
     [Output('total-person-cost', 'children'),
      Output('remaining-person-cost', 'children')],
@@ -1359,6 +1411,48 @@ def update_person_cost(selected_person, total_cost_text):
         f"Total Person-Months: {total_person_months_text}",
         f"Remaining Person-Months: {remaining_months} 人月"
     )
+    
+@callback(
+    Output('available-members', 'children'),
+    [Input({'type': 'card', 'index': ALL}, 'n_clicks')],
+    [State('modal-body-scroll', 'is_open'), State({'type': 'card', 'index': ALL}, 'id')],
+)
+def update_available_members(n_clicks, is_open, card_ids):
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        raise PreventUpdate
+
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    if button_id != "modal-body-scroll" or not is_open:
+        raise PreventUpdate
+
+    selected_task_index = None
+    for i, clicks in enumerate(n_clicks):
+        if clicks and clicks % 2 == 1:
+            selected_task_index = i
+            break
+
+    if selected_task_index is None:
+        raise PreventUpdate
+
+    selected_task_id = card_ids[selected_task_index]['index']
+    selected_task_cost = list_ex[selected_task_index]['cost']
+
+    available_members = []
+    for member in members:
+        resource_remaining = member['SprintResource'] - member['ResourceUsed']
+        if resource_remaining > selected_task_cost:
+            available_members.append(html.Div(member['Name']))
+
+    return available_members
+
+
+
+
+
+
+    
 
 @callback(
   Output('model_free', 'children'),
