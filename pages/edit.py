@@ -1,6 +1,6 @@
 import dash
 import dash_bootstrap_components as dbc
-from dash import html, dcc, callback
+from dash import html, dcc, dash_table,callback
 from dash.dependencies import Input, Output, State, ALL
 from matplotlib import category
 import pandas as pd
@@ -8,7 +8,6 @@ import re
 from .core import write_db,node_calculation,node_create
 import plotly.graph_objs as go
 import sqlite3
-import dash_draggable
 from dash.exceptions import PreventUpdate
 #Excelのファイル名とシート名
 e_base = '保守性_DB.xlsx'
@@ -1134,7 +1133,7 @@ def create_list_items(items, members):
                     dbc.Col(
                         dcc.Dropdown(
                             id={'type': 'dropdown', 'index': i},  # インデックスを文字列に変換してIDを指定
-                            options=[{'label': member['Name'], 'value': member['Name']} for member in members],
+                            options=[{'label': member['mname'], 'value': member['mname']} for member in members],
                             placeholder="Select member",
                             style={'width': '100%', 'display': 'none'},  # 初期状態は非表示
                         ),
@@ -1153,29 +1152,77 @@ def create_list_items(items, members):
     
 # モーダルウィンドウ内の要素を作成する関数
 def create_modal_content(list_ex, members):
+    # 新しいメンバー表用の列とデータ
+    member_table_columns = [
+        {"name": "Name", "id": "mname"},
+        {"name": "SprintResource", "id": "sprint_resource"},
+        {"name": "ResourceUsed", "id": "used_resource"}
+    ]
+
+    member_table_data = [
+        {
+            "mname": member["mname"],
+            "sprint_resource": member["sprint_resource"],
+            "used_resource": member["used_resource"]
+        }
+        for member in members
+    ]
+    
+    table_columns = [
+        {"name": "名前", "id": "mname"},
+        {"name": "残量", "id": "RemainingResource"},
+        {"name": "タスク", "id": "AssignedTask"}
+    ]
+
+    # メンバーの情報に残りのリソースと割り当てタスクの枠（空白）を追加
+    table_data = [
+        {
+            "mname": member["mname"],
+            "RemainingResource": f"{member['sprint_resource'] - member['used_resource']} MH",
+            "AssignedTask": ""
+        }
+        for member in members
+    ]
+
     return dbc.Row(
         [
             dbc.Col(
                 html.Div(
                     create_list_items(list_ex, members),
-                    style={'max-height': '70vh', 'overflow-y': 'auto'}  
-                ), 
+                    style={'max-height': '70vh', 'overflow-y': 'auto'}
+                ),
                 width=7
             ),
             dbc.Col(
                 html.Div(
                     [
-                        dcc.Dropdown(
-                            id='person-select',
-                            options=[
-                                {'label': f'{i} 人', 'value': i} for i in range(1, 100)
-                            ],
-                            value=1
+                        # dcc.Dropdown(
+                        #     id='person-select',
+                        #     options=[
+                        #         {'label': f'{i} 人', 'value': i} for i in range(1, 100)
+                        #     ],
+                        #     value=1
+                        # ),
+                        dash_table.DataTable(
+                            id='member-table',
+                            columns=member_table_columns,
+                            data=member_table_data,
+                            style_table={'height': '40%', 'overflowY': 'auto','marginBottom': '0px'},
+                            style_cell={'textAlign': 'center'},
+                            style_header={'fontWeight': 'bold'},
                         ),
-                        html.Div(id='total-person-cost', style={'border': '1px solid #000', 'padding': '10px', 'marginTop': '20px', 'textAlign': 'center', 'font-weight': 'bold'}),
-                        html.Div(id='remaining-person-cost', style={'border': '1px solid #000', 'padding': '10px', 'marginTop': '20px', 'textAlign': 'center', 'font-weight': 'bold'})
+                        html.Div(id='total-person-cost', style={'border': '1px solid #000', 'padding': '10px', 'marginTop': '5px', 'textAlign': 'center', 'font-weight': 'bold'}),
+                        html.Div(id='remaining-person-cost', style={'border': '1px solid #000', 'padding': '10px', 'marginTop': '5px', 'textAlign': 'center', 'font-weight': 'bold'}),
+                        dash_table.DataTable(
+                            id='task-table',
+                            columns=table_columns,
+                            data=table_data,
+                            style_table={'height': '40%', 'overflowY': 'auto', 'marginTop': '5px','marginBottom': '0px'},
+                            style_cell={'textAlign': 'center'},
+                            style_header={'fontWeight': 'bold'},
+                        )
                     ],
-                    style={'height': '100%'}
+                    style={'max-height': '70vh'}
                 ),
                 width=5
             )
@@ -1183,12 +1230,13 @@ def create_modal_content(list_ex, members):
     )
 
 
+
 members = [
-    {"MID": 1, "PID": 101, "SprintResource": 50, "ResourceUsed": 30, "Name": "豊洲"},
-    {"MID": 2, "PID": 101, "SprintResource": 60, "ResourceUsed": 20, "Name": "月島"},
-    {"MID": 3, "PID": 101, "SprintResource": 70, "ResourceUsed": 40, "Name": "新木場"},
-    {"MID": 4, "PID": 101, "SprintResource": 80, "ResourceUsed": 50, "Name": "渋谷"},
-    {"MID": 5, "PID": 101, "SprintResource": 90, "ResourceUsed": 60, "Name": "新宿"}
+    {"mid": 1, "pid": 101, "sprint_resource": 50, "used_resource": 30, "mname": "豊洲", "redmine_id": 123},
+    {"mid": 2, "pid": 101, "sprint_resource": 60, "used_resource": 20, "mname": "月島", "redmine_id": 124},
+    {"mid": 3, "pid": 101, "sprint_resource": 70, "used_resource": 40, "mname": "新木場", "redmine_id": 125},
+    {"mid": 4, "pid": 101, "sprint_resource": 80, "used_resource": 50, "mname": "渋谷", "redmine_id": 126},
+    {"mid": 5, "pid": 101, "sprint_resource": 90, "used_resource": 60, "mname": "新宿", "redmine_id": 127}
 ]
 
 # def edit_layout(project_name, category_num, sprint_num, state, pid):
@@ -1391,26 +1439,46 @@ def update_selection(n_clicks, card_styles, dropdown_styles):
 
     return new_card_styles, f"Total Cost: {total_cost} MH", new_dropdown_styles
 
+# プルダウンバージョン
+# @callback(
+#     [Output('total-person-cost', 'children'),
+#      Output('remaining-person-cost', 'children')],
+#     [Input('person-select', 'value'),
+#      Input('total-cost', 'children')]
+# )
+# def update_person_cost(selected_person, total_cost_text):
+#     if not total_cost_text:
+#         raise PreventUpdate
+    
+#     total_cost_mh = int(total_cost_text.split(":")[1].strip().split()[0])
+#     person_months = selected_person * 40
+#     remaining_months = person_months - total_cost_mh
+#     total_person_months_text = f"{selected_person} × 40MH = {person_months}MH"
 
+#     return (
+#         f"コスト合計: {total_person_months_text}",
+#         f"使用可能コスト残量: {remaining_months} MH"
+#     )
+# メンバーの合計リソースを計算して表示するコールバック
 @callback(
     [Output('total-person-cost', 'children'),
      Output('remaining-person-cost', 'children')],
-    [Input('person-select', 'value'),
-     Input('total-cost', 'children')]
+    [Input('total-cost', 'children')],
+    [State('member-table', 'data')]
 )
-def update_person_cost(selected_person, total_cost_text):
-    if not total_cost_text:
+def update_person_cost(total_cost_text, member_data):
+    if not total_cost_text or not member_data:
         raise PreventUpdate
-    
+
     total_cost_mh = int(total_cost_text.split(":")[1].strip().split()[0])
-    person_months = selected_person * 40
-    remaining_months = person_months - total_cost_mh
-    total_person_months_text = f"{selected_person} × 40MH = {person_months}MH"
+    total_sprint_resource = sum(member['sprint_resource'] for member in member_data)
+    remaining_resource = total_sprint_resource - total_cost_mh
 
     return (
-        f"Total Person-Months: {total_person_months_text}",
-        f"Remaining Person-Months: {remaining_months} 人月"
+        f"メンバーの総スプリントリソース: {total_sprint_resource} MH",
+        f"使用可能コスト残量: {remaining_resource} MH"
     )
+
     
 @callback(
     Output('available-members', 'children'),
