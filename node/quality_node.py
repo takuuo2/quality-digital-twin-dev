@@ -122,3 +122,35 @@ class QualityNode:
 
     def dispatch(self):
         pass
+    
+class Member:
+    def __init__(self, mid, mname, pid, sprint_resource, used_resource, redmine_id):
+        self.mid = mid
+        self.mname = mname
+        self.pid = pid
+        self.sprint_resource = sprint_resource
+        self.used_resource = used_resource
+        self.redmine_id = redmine_id
+
+    @staticmethod
+    def fetch_all_members():
+        members = []
+        connector = None
+        cursor = None
+        try:
+            connector = write_db.get_connector()
+            cursor = connector.cursor()
+            cursor.execute('SELECT * FROM member')
+            records = cursor.fetchall()
+            for record in records:
+                mid, mname, pid, sprint_resource, used_resource, redmine_id = record
+                member = Member(mid, mname, pid, sprint_resource, used_resource, redmine_id)
+                members.append(member)
+        except (Exception, Error) as error:
+            print('PostgreSQLへの接続時のエラーが発生しました:', error)
+        finally:
+            if cursor:
+                cursor.close()
+            if connector:
+                connector.close()
+        return members

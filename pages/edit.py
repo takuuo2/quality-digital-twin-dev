@@ -7,6 +7,7 @@ import pandas as pd
 import re
 from .core import write_db,node_calculation
 from node import quality_node, quality_activity, quality_implementation, quality_requirement
+from task import task
 import plotly.graph_objs as go
 import sqlite3
 from dash.exceptions import PreventUpdate
@@ -1114,11 +1115,11 @@ def create_list_items(items, members):
                                         ),
                                         dbc.Col(
                                             html.Div(item['name'], style={'width': '100%', 'height': '100%', 'border': '1px solid #000', 'padding': '10px', 'text-align': 'center', 'background-color': 'dodgerblue', 'color': 'white', 'font-weight': 'bold'}),
-                                            width=4
+                                            width=5
                                         ),
                                         dbc.Col(
                                             html.Div(f"{item['cost']} MH", style={'width': '70px', 'height': '70px', 'borderRadius': '50%', 'border': '1px solid #000', 'padding': '10px', 'display': 'flex', 'align-items': 'center', 'justify-content': 'center', 'background-color': 'green', 'color': 'white', 'font-weight': 'bold'}),
-                                            width=2
+                                            width=1
                                         )
                                     ],
                                     align='center'
@@ -1129,7 +1130,7 @@ def create_list_items(items, members):
                             id={'type': 'card', 'index': i},
                             style={'border': 'none', 'background': 'none', 'padding': '0', 'width': '100%', 'marginBottom': '10px'}
                         ),
-                        width=10  # ボタン部分の幅を設定
+                        width=9  # ボタン部分の幅を設定
                     ),
                     dbc.Col(
                         dcc.Dropdown(
@@ -1138,7 +1139,7 @@ def create_list_items(items, members):
                             placeholder="Select member",
                             style={'width': '100%', 'display': 'none'},  # 初期状態は非表示
                         ),
-                        width=2,  # ドロップダウン部分の幅を設定
+                        width=3,  # ドロップダウン部分の幅を設定
                     )
                 ],
                 align='center',
@@ -1157,36 +1158,68 @@ def create_modal_content(list_ex, members):
     member_table_columns = [
         {"name": "Name", "id": "mname"},
         {"name": "SprintResource(MH)", "id": "sprint_resource"},
-        {"name": "ResourceUsed(MH)", "id": "used_resource"}
+        {"name": "ResourceUsed(MH)", "id": "used_resource"},
+        {"name": "残量(MH)", "id": "RemainingResource"}
     ]
 
     member_table_data = [
         {
             "mname": member["mname"],
             "sprint_resource": member["sprint_resource"],
-            "used_resource": member["used_resource"]
+            "used_resource": member["used_resource"],
+            "RemainingResource": f"{member['sprint_resource'] - member['used_resource']} MH"
         }
         for member in members
     ]
     
     table_columns = [
         {"name": "名前", "id": "mname"},
-        {"name": "残量(MH)", "id": "RemainingResource"},
         {"name": "タスク", "id": "AssignedTask"}
     ]
 
     # メンバーの情報に残りのリソースと割り当てタスクの枠（空白）を追加
-    table_data = [
-        {
-            "mname": member["mname"],
-            "RemainingResource": f"{member['sprint_resource'] - member['used_resource']} MH",
-            "AssignedTask": ""
-        }
-        for member in members
-    ]
+    table_data = []
+    assignments = task.TaskAssignment.fetch_all_assignments()
+    tasks = task.Task.fetch_all_tasks()
+    for member in members:
+        assigned_task = ""
+        for assignment in assignments:
+            if assignment.mid == member["mid"]:
+                assigned_task = next((task.tname for task in tasks if task.tid == assignment.tid), "")
+                break
+        table_data.append({"mname": member["mname"], "AssignedTask": assigned_task})
 
     return dbc.Row(
-        [
+        [   
+            dbc.Col(
+              dbc.Col(
+                dbc.Row([
+                  dbc.Col(
+                      html.Div(
+                          "品質要求",
+                          style={'width': '90%', 'height': '90%', 'border': '1px solid #000', 'margin': '0 0 0 12px','padding': '10px', 'text-align': 'center', 'background-color': 'blue', 'color': 'white','font-weight': 'bold'}
+                      ),
+                      width=4
+                  ),
+                  dbc.Col(
+                      html.Div( 
+                          "品質活動",
+                          style={'width': '90%', 'height': '90%', 'border': '1px solid #000', 'padding': '10px', 'text-align': 'center', 'background-color': 'dodgerblue', 'color': 'white', 'font-weight': 'bold'}
+                          ),
+                      width=5
+                  ),
+                  dbc.Col(
+                      html.Div( 
+                          "コスト",
+                          style={'width': '70px', 'height': '70px', 'borderRadius': '50%', 'border': '1px solid #000', 'padding': '10px', 'display': 'flex', 'align-items': 'center', 'justify-content': 'center', 'background-color': 'green', 'color': 'white', 'font-weight': 'bold'}
+                          ),
+                      width=1
+                  )
+                ]),
+                width=9  
+              ),
+              width=7
+            ),
             dbc.Col(
                 html.Div(
                     create_list_items(list_ex, members),
@@ -1232,18 +1265,41 @@ def create_modal_content(list_ex, members):
 
 
 
-members = [
-    {"mid": 1, "pid": 101, "sprint_resource": 50, "used_resource": 30, "mname": "豊洲", "redmine_id": 123},
-    {"mid": 2, "pid": 101, "sprint_resource": 60, "used_resource": 20, "mname": "月島", "redmine_id": 124},
-    {"mid": 3, "pid": 101, "sprint_resource": 70, "used_resource": 40, "mname": "新木場", "redmine_id": 125},
-    {"mid": 4, "pid": 101, "sprint_resource": 80, "used_resource": 50, "mname": "渋谷", "redmine_id": 126},
-    {"mid": 5, "pid": 101, "sprint_resource": 90, "used_resource": 60, "mname": "新宿", "redmine_id": 127}
-]
-
+# members = [
+#     {"mid": 1, "pid": 101, "sprint_resource": 50, "used_resource": 30, "mname": "豊洲", "redmine_id": 123},
+#     {"mid": 2, "pid": 101, "sprint_resource": 60, "used_resource": 20, "mname": "月島", "redmine_id": 124},
+#     {"mid": 3, "pid": 101, "sprint_resource": 70, "used_resource": 40, "mname": "新木場", "redmine_id": 125},
+#     {"mid": 4, "pid": 101, "sprint_resource": 80, "used_resource": 50, "mname": "渋谷", "redmine_id": 126},
+#     {"mid": 5, "pid": 101, "sprint_resource": 90, "used_resource": 60, "mname": "新宿", "redmine_id": 127}
+# ]
+# members_data = quality_node.Member.fetch_all_members()
+# members = [
+#     {
+#         "mid": member.mid,
+#         "pid": member.pid,
+#         "sprint_resource": member.sprint_resource,
+#         "used_resource": member.used_resource,
+#         "mname": member.mname,
+#         "redmine_id": member.redmine_id
+#     }
+#     for member in members_data
+# ]
 # def edit_layout(project_name, category_num, sprint_num, state, pid):
 def edit_layout(params):
-  
-
+  current_pid = params.get("pid")
+  # 現在のpidと一致するメンバーだけを含める
+  members_data = quality_node.Member.fetch_all_members()
+  members = [
+      {
+          "mid": member.mid,
+          "pid": member.pid,
+          "sprint_resource": member.sprint_resource,
+          "used_resource": member.used_resource,
+          "mname": member.mname,
+          "redmine_id": member.redmine_id
+      }
+      for member in members_data if str(member.pid) == current_pid
+  ]  
   return dbc.Container(
    [
       dbc.Row(
