@@ -5,7 +5,8 @@ from dash.dependencies import Input, Output, State, ALL
 from matplotlib import category
 import pandas as pd
 import re
-from .core import write_db,node_calculation,node_create
+from .core import write_db,node_calculation
+from node import quality_node, quality_activity, quality_implementation, quality_requirement
 import plotly.graph_objs as go
 import sqlite3
 from dash.exceptions import PreventUpdate
@@ -1081,10 +1082,10 @@ def create_list_from_activities(activities, nodes):
     return result
 
 # 品質活動からachievementが1ではないノードを取得
-non_achieved_activities = node_create.QualityActivity.get_non_achieved_activities()
+non_achieved_activities = quality_activity.QualityActivity.get_non_achieved_activities()
 
 # 全てのノードを取得
-all_nodes = node_create.QualityNode.fetch_all_nodes()
+all_nodes = quality_node.QualityNode.fetch_all_nodes()
 
 # ノードからリストを作成
 list_ex = create_list_from_activities(non_achieved_activities, all_nodes)
@@ -1155,8 +1156,8 @@ def create_modal_content(list_ex, members):
     # 新しいメンバー表用の列とデータ
     member_table_columns = [
         {"name": "Name", "id": "mname"},
-        {"name": "SprintResource", "id": "sprint_resource"},
-        {"name": "ResourceUsed", "id": "used_resource"}
+        {"name": "SprintResource(MH)", "id": "sprint_resource"},
+        {"name": "ResourceUsed(MH)", "id": "used_resource"}
     ]
 
     member_table_data = [
@@ -1170,7 +1171,7 @@ def create_modal_content(list_ex, members):
     
     table_columns = [
         {"name": "名前", "id": "mname"},
-        {"name": "残量", "id": "RemainingResource"},
+        {"name": "残量(MH)", "id": "RemainingResource"},
         {"name": "タスク", "id": "AssignedTask"}
     ]
 
@@ -1222,7 +1223,7 @@ def create_modal_content(list_ex, members):
                             style_header={'fontWeight': 'bold'},
                         )
                     ],
-                    style={'max-height': '70vh'}
+                    style={'max-height': '70vh','overflow-y': 'auto'}
                 ),
                 width=5
             )
@@ -1379,11 +1380,13 @@ def edit_layout(params):
 
 
 
-
 @callback(
     Output("modal-body-scroll", "is_open"),
-    [Input("open-body-scroll", "n_clicks"), Input("close-body-scroll", "n_clicks"),Input("confirm-button", "n_clicks")],
-    [State("modal-body-scroll", "is_open"),State({'type': 'card', 'index': ALL}, 'style')],
+    [Input("open-body-scroll", "n_clicks"), 
+     Input("close-body-scroll", "n_clicks"),
+     Input("confirm-button", "n_clicks")],
+    [State("modal-body-scroll", "is_open"),
+     State({'type': 'card', 'index': ALL}, 'style')]
 )
 def toggle_modal(open_clicks, close_clicks, confirm_clicks, is_open, card_styles):
     ctx = dash.callback_context
@@ -1544,6 +1547,7 @@ def up_node(input_value, button_list, radio_list, input_list, drop_list, url):
       pid = match.group(1)
       category = match1.group(1)
     #保守性が選ばれたとき
+    drop_list = []
     if (button_list == []) and (radio_list == []) and (input_list == []) and (drop_list == []):
       check_node = write_db.check_node(pid,input_value)
       if check_node == 'none':
