@@ -1060,27 +1060,23 @@ def create_list_from_activities(activities, nodes):
         content = activity.task
         parent_statement = None
         parent_subchar = None
-        # print(activity)
+        nid = activity.nid  # アクティビティの nid を取得
+
         # 親ノードの情報を取得
         if activity.parents:
             parent_nid = activity.parents[0]
             parent_node = node_dict.get(parent_nid)
             if parent_node and isinstance(parent_node.task, dict):
                 parent_statement = parent_node.task.get('statement')
-                # 親ノード確認デバック用
-                # parent_subchar = parent_node.nid
                 parent_subchar = parent_node.task.get('subchar')
-            else:
-              print("false2")
-        # else:
-          # print("false")
 
         if isinstance(content, dict) and 'subchar' in content:
-            result.append({'name': content['subchar'], 'cost': 5, 'parent': parent_subchar, 'statement': parent_statement})
-        # else:
-            # result.append({'name': '不明', 'cost': 5, 'parent': parent_subchar, 'statement': parent_statement})
+            result.append({'nid': nid, 'name': content['subchar'], 'cost': 5, 'parent': parent_subchar, 'statement': parent_statement})
+        else:
+            result.append({'nid': nid, 'name': '不明', 'cost': 5, 'parent': parent_subchar, 'statement': parent_statement})
 
     return result
+
 
 # 品質活動からachievementが1ではないノードを取得
 non_achieved_activities = quality_activity.QualityActivity.get_non_achieved_activities()
@@ -1127,14 +1123,14 @@ def create_list_items(items, members):
                                 className="mb-2",
                                 style={'width': '100%', 'margin': 'auto'}
                             ),
-                            id={'type': 'card', 'index': i},
+                            id={'type': 'card', 'nid': item['nid']},
                             style={'border': 'none', 'background': 'none', 'padding': '0', 'width': '100%', 'marginBottom': '10px'}
                         ),
                         width=9  # ボタン部分の幅を設定
                     ),
                     dbc.Col(
                         dcc.Dropdown(
-                            id={'type': 'dropdown', 'index': i},  # インデックスを文字列に変換してIDを指定
+                            id={'type': 'dropdown', 'nid': item['nid']},  # nid を使用
                             options=[{'label': member['mname'], 'value': member['mname']} for member in members],
                             placeholder="Select member",
                             style={'width': '100%', 'display': 'none'},  # 初期状態は非表示
@@ -1146,12 +1142,14 @@ def create_list_items(items, members):
                 className="mb-2",
                 style={'width': '100%', 'margin': 'auto'}
             )
-        ) for i, item in enumerate(items)
+        ) for item in items
     ]
 
 
 
-    
+
+assignments = task.TaskAssignment.fetch_all_assignments()
+tasks = task.Task.fetch_all_tasks()    
 # モーダルウィンドウ内の要素を作成する関数
 def create_modal_content(list_ex, members):
     # 新しいメンバー表用の列とデータ
@@ -1161,7 +1159,7 @@ def create_modal_content(list_ex, members):
         {"name": "ResourceUsed(MH)", "id": "used_resource"},
         {"name": "残量(MH)", "id": "RemainingResource"}
     ]
-
+    
     member_table_data = [
         {
             "mname": member["mname"],
@@ -1173,21 +1171,24 @@ def create_modal_content(list_ex, members):
     ]
     
     table_columns = [
-        {"name": "名前", "id": "mname"},
-        {"name": "タスク", "id": "AssignedTask"}
+    {"name": "名前", "id": "mname"},
+    {"name": "タスク", "id": "AssignedTask"}
     ]
 
     # メンバーの情報に残りのリソースと割り当てタスクの枠（空白）を追加
     table_data = []
-    assignments = task.TaskAssignment.fetch_all_assignments()
-    tasks = task.Task.fetch_all_tasks()
     for member in members:
-        assigned_task = ""
+        assigned_tasks = []
         for assignment in assignments:
             if assignment.mid == member["mid"]:
-                assigned_task = next((task.tname for task in tasks if task.tid == assignment.tid), "")
-                break
-        table_data.append({"mname": member["mname"], "AssignedTask": assigned_task})
+                assigned_task_name = next((task.tname for task in tasks if task.tid == assignment.tid), "")
+                if assigned_task_name:
+                    assigned_tasks.append(assigned_task_name)
+          
+        # リストをカンマ区切りの文字列に変換
+        assigned_tasks_str = ", ".join(assigned_tasks) if assigned_tasks else ""
+        table_data.append({"mname": member["mname"], "AssignedTask": assigned_tasks_str})
+
 
     return dbc.Row(
         [   
@@ -1262,33 +1263,31 @@ def create_modal_content(list_ex, members):
             )
         ]
     )
+members_data = quality_node.Member.fetch_all_members()
+members = [
+    {
+        "mid": member.mid,
+        "pid": member.pid,
+        "sprint_resource": member.sprint_resource,
+        "used_resource": member.used_resource,
+        "mname": member.mname,
+        "redmine_id": member.redmine_id
+    }
+    for member in members_data
+] 
+for assignment in assignments:
+    for member in members:
+        if member["mid"] == assignment.mid:
+            # タスクのコストを加算
+            calc_task = next((t for t in tasks if t.tid == assignment.tid), None)
+            if calc_task:
+                member["used_resource"] += calc_task.cost
 
-
-
-# members = [
-#     {"mid": 1, "pid": 101, "sprint_resource": 50, "used_resource": 30, "mname": "豊洲", "redmine_id": 123},
-#     {"mid": 2, "pid": 101, "sprint_resource": 60, "used_resource": 20, "mname": "月島", "redmine_id": 124},
-#     {"mid": 3, "pid": 101, "sprint_resource": 70, "used_resource": 40, "mname": "新木場", "redmine_id": 125},
-#     {"mid": 4, "pid": 101, "sprint_resource": 80, "used_resource": 50, "mname": "渋谷", "redmine_id": 126},
-#     {"mid": 5, "pid": 101, "sprint_resource": 90, "used_resource": 60, "mname": "新宿", "redmine_id": 127}
-# ]
-# members_data = quality_node.Member.fetch_all_members()
-# members = [
-#     {
-#         "mid": member.mid,
-#         "pid": member.pid,
-#         "sprint_resource": member.sprint_resource,
-#         "used_resource": member.used_resource,
-#         "mname": member.mname,
-#         "redmine_id": member.redmine_id
-#     }
-#     for member in members_data
-# ]
-# def edit_layout(project_name, category_num, sprint_num, state, pid):
+current_pid = ""
 def edit_layout(params):
+  global current_pid
   current_pid = params.get("pid")
   # 現在のpidと一致するメンバーだけを含める
-  members_data = quality_node.Member.fetch_all_members()
   members = [
       {
           "mid": member.mid,
@@ -1457,20 +1456,26 @@ def toggle_modal(open_clicks, close_clicks, confirm_clicks, is_open, card_styles
         return False
     elif button_id == "confirm-button":
         # 確認ボタンが押されたときの処理
-        # 必要な処理をここに追加
+        update_database()
         return False
     return is_open
-  
+def update_database():
+  # ここにノードの更新を記述
+    pass
 
 @callback(
-    [Output({'type': 'card', 'index': ALL}, 'style'),
+    [Output({'type': 'card', 'nid': ALL}, 'style'),
      Output('total-cost', 'children'),
-     Output({'type': 'dropdown', 'index': ALL}, 'style')],
-    [Input({'type': 'card', 'index': ALL}, 'n_clicks')],
-    [State({'type': 'card', 'index': ALL}, 'style'),
-     State({'type': 'dropdown', 'index': ALL}, 'style')],
+     Output({'type': 'dropdown', 'nid': ALL}, 'style'),
+     Output('task-table', 'data'),  # 新しく追加するOutput
+     Output('member-table', 'data')],  # 新しく追加するOutput
+    [Input({'type': 'card', 'nid': ALL}, 'n_clicks'),
+     Input({'type': 'dropdown', 'nid': ALL}, 'value')],
+    [State({'type': 'card', 'nid': ALL}, 'style'),
+     State({'type': 'dropdown', 'nid': ALL}, 'style'),
+     State({'type': 'dropdown', 'nid': ALL}, 'id')]
 )
-def update_selection(n_clicks, card_styles, dropdown_styles):
+def update_selection(n_clicks, selected_values, card_styles, dropdown_styles, dropdown_ids):
     if not n_clicks:
         raise PreventUpdate
 
@@ -1495,29 +1500,63 @@ def update_selection(n_clicks, card_styles, dropdown_styles):
             dropdown_styles[i]['display'] = 'none'  # プルダウンを非表示
         new_card_styles.append(card_styles[i])
         new_dropdown_styles.append(dropdown_styles[i])
-
-    return new_card_styles, f"Total Cost: {total_cost} MH", new_dropdown_styles
-
-# プルダウンバージョン
-# @callback(
-#     [Output('total-person-cost', 'children'),
-#      Output('remaining-person-cost', 'children')],
-#     [Input('person-select', 'value'),
-#      Input('total-cost', 'children')]
-# )
-# def update_person_cost(selected_person, total_cost_text):
-#     if not total_cost_text:
-#         raise PreventUpdate
     
-#     total_cost_mh = int(total_cost_text.split(":")[1].strip().split()[0])
-#     person_months = selected_person * 40
-#     remaining_months = person_months - total_cost_mh
-#     total_person_months_text = f"{selected_person} × 40MH = {person_months}MH"
+    # プロジェクトIDに基づいてメンバーをフィルタリング
+    filtered_members = [
+        member for member in members
+        if str(member["pid"]) == current_pid
+    ]
+    
+    # タスクの割り当てと同時にメンバーのused_resourceを更新
+    for i, value in enumerate(selected_values):
+        if value:
+            member_mid = next((member['mid'] for member in filtered_members if member['mname'] == value), None)
+            if member_mid:
+                task_nid = dropdown_ids[i]['nid']
+                search_task = next((t for t in tasks if t.nid == task_nid), None)  # tasksからnidが一致するタスクを探す
+                if search_task:
+                    # 元々の割り当てを削除
+                    for assignment in assignments:
+                        if assignment.tid == search_task.tid:
+                            member = next((member for member in filtered_members if member['mid'] == assignment.mid), None)
+                            if member:
+                                member['used_resource'] -= search_task.cost
+                            assignments.remove(assignment)
+                    new_assignment = task.TaskAssignment(aid=None, tid=search_task.tid, mid=member_mid)
+                    assignments.append(new_assignment)
+                    member = next((member for member in filtered_members if member['mid'] == member_mid), None)
+                    if member:
+                        member['used_resource'] += search_task.cost
+    
+    # task-tableのデータ更新
+    table_data = []
+    for member in filtered_members:
+        assigned_tasks = []
+        for assignment in assignments:
+            if assignment.mid == member["mid"]:
+                assigned_task_name = next((task.tname for task in tasks if task.tid == assignment.tid), "")
+                if assigned_task_name:
+                    assigned_tasks.append(assigned_task_name)
+        
+        # リストをカンマ区切りの文字列に変換
+        assigned_tasks_str = ", ".join(assigned_tasks) if assigned_tasks else ""
+        table_data.append({"mname": member["mname"], "AssignedTask": assigned_tasks_str})
 
-#     return (
-#         f"コスト合計: {total_person_months_text}",
-#         f"使用可能コスト残量: {remaining_months} MH"
-#     )
+    # member-tableのデータ更新
+    member_table_data = [
+        {
+            "mname": member["mname"],
+            "sprint_resource": member["sprint_resource"],
+            "used_resource": member["used_resource"],
+            "RemainingResource": f"{member['sprint_resource'] - member['used_resource']} MH"
+        }
+        for member in filtered_members
+    ]
+
+    return new_card_styles, f"Total Cost: {total_cost} MH", new_dropdown_styles, table_data, member_table_data
+
+
+
 # メンバーの合計リソースを計算して表示するコールバック
 @callback(
     [Output('total-person-cost', 'children'),
@@ -1539,40 +1578,7 @@ def update_person_cost(total_cost_text, member_data):
     )
 
     
-@callback(
-    Output('available-members', 'children'),
-    [Input({'type': 'card', 'index': ALL}, 'n_clicks')],
-    [State('modal-body-scroll', 'is_open'), State({'type': 'card', 'index': ALL}, 'id')],
-)
-def update_available_members(n_clicks, is_open, card_ids):
-    ctx = dash.callback_context
-    if not ctx.triggered:
-        raise PreventUpdate
 
-    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
-
-    if button_id != "modal-body-scroll" or not is_open:
-        raise PreventUpdate
-
-    selected_task_index = None
-    for i, clicks in enumerate(n_clicks):
-        if clicks and clicks % 2 == 1:
-            selected_task_index = i
-            break
-
-    if selected_task_index is None:
-        raise PreventUpdate
-
-    selected_task_id = card_ids[selected_task_index]['index']
-    selected_task_cost = list_ex[selected_task_index]['cost']
-
-    available_members = []
-    for member in members:
-        resource_remaining = member['SprintResource'] - member['ResourceUsed']
-        if resource_remaining > selected_task_cost:
-            available_members.append(html.Div(member['Name']))
-
-    return available_members
 
 
 

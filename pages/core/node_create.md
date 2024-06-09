@@ -71,6 +71,20 @@ classDiagram
         +cost()
     }
 
+    class Member{
+        +serial mid
+        +bpchar mname
+        +int pid
+        +int sprint_resource
+        +int used_resource
+        +int redmine_id
+    }
+
+    class task_assignment{
+        +serial aid
+        +int tid
+        +int mid
+    }
 
 
     QualityNode <|-- QualityRequirement
