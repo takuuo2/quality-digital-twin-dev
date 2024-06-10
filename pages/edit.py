@@ -1072,8 +1072,8 @@ def create_list_from_activities(activities, nodes):
 
         if isinstance(content, dict) and 'subchar' in content:
             result.append({'nid': nid, 'name': content['subchar'], 'cost': 5, 'parent': parent_subchar, 'statement': parent_statement})
-        else:
-            result.append({'nid': nid, 'name': '不明', 'cost': 5, 'parent': parent_subchar, 'statement': parent_statement})
+        # else:
+        #     result.append({'nid': nid, 'name': '不明', 'cost': 5, 'parent': parent_subchar, 'statement': parent_statement})
 
     return result
 
@@ -1165,7 +1165,7 @@ def create_modal_content(list_ex, members):
             "mname": member["mname"],
             "sprint_resource": member["sprint_resource"],
             "used_resource": member["used_resource"],
-            "RemainingResource": f"{member['sprint_resource'] - member['used_resource']} MH"
+            "RemainingResource": member['sprint_resource'] - member['used_resource']
         }
         for member in members
     ]
@@ -1197,14 +1197,14 @@ def create_modal_content(list_ex, members):
                 dbc.Row([
                   dbc.Col(
                       html.Div(
-                          "品質要求",
+                          "実現できる品質要求",
                           style={'width': '90%', 'height': '90%', 'border': '1px solid #000', 'margin': '0 0 0 12px','padding': '10px', 'text-align': 'center', 'background-color': 'blue', 'color': 'white','font-weight': 'bold'}
                       ),
                       width=4
                   ),
                   dbc.Col(
                       html.Div( 
-                          "品質活動",
+                          "品質活動（タスク）",
                           style={'width': '90%', 'height': '90%', 'border': '1px solid #000', 'padding': '10px', 'text-align': 'center', 'background-color': 'dodgerblue', 'color': 'white', 'font-weight': 'bold'}
                           ),
                       width=5
@@ -1467,8 +1467,8 @@ def update_database():
     [Output({'type': 'card', 'nid': ALL}, 'style'),
      Output('total-cost', 'children'),
      Output({'type': 'dropdown', 'nid': ALL}, 'style'),
-     Output('task-table', 'data'),  # 新しく追加するOutput
-     Output('member-table', 'data')],  # 新しく追加するOutput
+     Output('task-table', 'data'), 
+     Output('member-table', 'data')],  
     [Input({'type': 'card', 'nid': ALL}, 'n_clicks'),
      Input({'type': 'dropdown', 'nid': ALL}, 'value')],
     [State({'type': 'card', 'nid': ALL}, 'style'),
@@ -1548,7 +1548,7 @@ def update_selection(n_clicks, selected_values, card_styles, dropdown_styles, dr
             "mname": member["mname"],
             "sprint_resource": member["sprint_resource"],
             "used_resource": member["used_resource"],
-            "RemainingResource": f"{member['sprint_resource'] - member['used_resource']} MH"
+            "RemainingResource": member['sprint_resource'] - member['used_resource']
         }
         for member in filtered_members
     ]

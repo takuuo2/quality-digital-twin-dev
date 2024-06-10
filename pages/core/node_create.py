@@ -219,3 +219,69 @@
 #     def calculate_cost(self):
 #         # 具体的なコスト計算ロジックをここに記述
 #         return self.cost
+
+
+
+##データベース更新用edit.pyに配置
+# def create_list_from_activities(activities, nodes):
+#     result = []
+    
+#     # ノードの辞書を作成して、nidで検索しやすくする
+#     node_dict = {node.nid: node for node in nodes}
+    
+#     connector = None
+#     cursor = None
+    
+#     try:
+#         connector = write_db.get_connector()
+#         cursor = connector.cursor()
+        
+#         for activity in activities:
+#             content = activity.task
+#             parent_statement = None
+#             parent_subchar = None
+#             nid = activity.nid  # アクティビティの nid を取得
+            
+#             # 親ノードの情報を取得
+#             if activity.parents:
+#                 parent_nid = activity.parents[0]
+#                 parent_node = node_dict.get(parent_nid)
+#                 if parent_node and isinstance(parent_node.task, dict):
+#                     parent_statement = parent_node.task.get('statement')
+#                     parent_subchar = parent_node.task.get('subchar')
+
+#             if isinstance(content, dict) and 'subchar' in content:
+#                 result.append({
+#                     'nid': nid, 
+#                     'name': content['subchar'], 
+#                     'cost': 5, 
+#                     'parent': parent_subchar, 
+#                     'statement': parent_statement
+#                 })
+                
+#                 # タスクテーブルにデータを挿入
+#                 cursor.execute(
+#                     '''
+#                     INSERT INTO task (tname, nid, cost, parameter)
+#                     VALUES (%s, %s, %s, %s)
+#                     ''', 
+#                     (
+#                         content['subchar'],  # tname
+#                         nid,                 # nid
+#                         5,                   # cost
+#                         '{"example": "value"}'  # parameter (例としてJSON文字列)
+#                     )
+#                 )
+        
+#         connector.commit()  # 変更をコミット
+#     except (Exception, Error) as error:
+#         print('PostgreSQLへの接続時のエラーが発生しました:', error)
+#         if connector:
+#             connector.rollback()  # エラー発生時にロールバック
+#     finally:
+#         if cursor:
+#             cursor.close()
+#         if connector:
+#             connector.close()
+
+#     return result
