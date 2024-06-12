@@ -12,6 +12,7 @@ import plotly.graph_objs as go
 import sqlite3
 from dash.exceptions import PreventUpdate
 import json
+import psycopg2
 #Excelのファイル名とシート名
 e_base = '保守性_DB.xlsx'
 e_square = 'SQuaRE'
@@ -1492,8 +1493,64 @@ def toggle_modal(open_clicks, close_clicks, confirm_clicks, is_open, card_styles
 
   
 def update_database():
-  # ここにノードの更新を記述
-    pass
+    connector = write_db.get_connector()
+
+    try:
+        with connector.cursor() as cursor:
+            # Taskテーブルの更新
+            for task_obj in tasks:
+                task_query = """
+                INSERT INTO task (tid, tname, nid, cost, parameter)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (tid)
+                DO UPDATE SET
+                    tname = EXCLUDED.tname,
+                    nid = EXCLUDED.nid,
+                    cost = EXCLUDED.cost,
+                    parameter = EXCLUDED.parameter
+                """
+                parameter_json = json.dumps(task_obj.parameter)  # 辞書をJSON文字列に変換
+                cursor.execute(task_query, (task_obj.tid, task_obj.tname, task_obj.nid, task_obj.cost, parameter_json))
+
+            # Memberテーブルの更新
+            for member in members:
+                member_query = """
+                INSERT INTO member (mid, mname, pid, sprint_resource, used_resource, redmine_id)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT (mid)
+                DO UPDATE SET
+                    mname = EXCLUDED.mname,
+                    pid = EXCLUDED.pid,
+                    sprint_resource = EXCLUDED.sprint_resource,
+                    used_resource = EXCLUDED.used_resource,
+                    redmine_id = EXCLUDED.redmine_id
+                """
+                cursor.execute(member_query, (member['mid'], member['mname'], member['pid'], member['sprint_resource'], member['used_resource'], member['redmine_id']))
+
+            # TaskAssignmentテーブルの更新
+            for assignment in assignments:
+                assignment_query = """
+                INSERT INTO task_assignment (tid, mid)
+                VALUES (%s, %s)
+                """
+                cursor.execute(assignment_query, (assignment.tid, assignment.mid))
+
+        # トランザクションをコミット
+        connector.commit()
+
+    except Exception as e:
+        # エラーが発生した場合はロールバック
+        connector.rollback()
+        raise e
+
+    finally:
+        # コネクションを閉じる
+        connector.close()
+
+
+
+
+  
 @callback(
     [Output({'type': 'card', 'nid': ALL}, 'style'),
      Output('total-cost', 'children'),
@@ -1626,161 +1683,6 @@ def update_selection(n_clicks, selected_values, card_styles, dropdown_styles, dr
     remaining_resource = total_sprint_resource - total_cost_mh
 
     return new_card_styles, f"Total Cost: {total_cost_mh} MH", new_dropdown_styles, table_data, member_table_data, f"メンバーの総スプリントリソース: {total_sprint_resource} MH", f"使用可能コスト残量: {remaining_resource} MH"
-
-
-
-
-# @callback(
-#     [Output({'type': 'card', 'nid': ALL}, 'style'),
-#      Output('total-cost', 'children'),
-#      Output({'type': 'dropdown', 'nid': ALL}, 'style'),
-#      Output('task-table', 'data'), 
-#      Output('member-table', 'data')],  
-#     [Input({'type': 'card', 'nid': ALL}, 'n_clicks'),
-#      Input({'type': 'dropdown', 'nid': ALL}, 'value')],
-#     [State({'type': 'card', 'nid': ALL}, 'style'),
-#      State({'type': 'dropdown', 'nid': ALL}, 'style'),
-#      State({'type': 'dropdown', 'nid': ALL}, 'id')]
-# )
-# def update_selection(n_clicks, selected_values, card_styles, dropdown_styles, dropdown_ids):
-#     if not n_clicks:
-#         raise PreventUpdate
-#     total_cost = 0
-#     new_card_styles = []
-#     new_dropdown_styles = []
-
-#     # リストの長さを合わせる
-#     num_items = len(n_clicks)
-#     if len(card_styles) < num_items:
-#         card_styles.extend([{} for _ in range(num_items - len(card_styles))])
-#     if len(dropdown_styles) < num_items:
-#         dropdown_styles.extend([{} for _ in range(num_items - len(dropdown_styles))])
-
-#     for i, clicks in enumerate(n_clicks):
-#         if clicks and clicks % 2 == 1:
-#             card_styles[i]['backgroundColor'] = '#d3d3d3'
-#             dropdown_styles[i]['display'] = 'block'  # プルダウンを表示
-#             total_cost += list_ex[i]['cost']
-#         else:
-#             card_styles[i]['backgroundColor'] = 'white'
-#             dropdown_styles[i]['display'] = 'none'  # プルダウンを非表示
-#         new_card_styles.append(card_styles[i])
-#         new_dropdown_styles.append(dropdown_styles[i])
-    
-#     # プロジェクトIDに基づいてメンバーをフィルタリング
-#     filtered_members = [
-#         member for member in members
-#         if str(member["pid"]) == current_pid
-#     ]
-    
-#     # タスクの割り当てと同時にメンバーのused_resourceを更新
-#     for i, value in enumerate(selected_values):
-#         if value:
-#             member_mid = next((member['mid'] for member in filtered_members if member['mname'] == value), None)
-#             if member_mid:
-#                 task_nid = dropdown_ids[i]['nid']
-#                 search_task = next((t for t in tasks if t.nid == task_nid), None)  # tasksからnidが一致するタスクを探す
-#                 if search_task:
-#                     # 元々の割り当てを削除
-#                     for assignment in assignments:
-#                         if assignment.tid == search_task.tid:
-#                             member = next((member for member in filtered_members if member['mid'] == assignment.mid), None)
-#                             if member:
-#                                 member['used_resource'] -= search_task.cost
-#                             assignments.remove(assignment)
-#                 else:
-#                     # 新しいタスクを作成してtasksに追加
-#                     if tasks:
-#                         new_tid = tasks[-1].tid + 1
-#                     else:
-#                         new_tid = None
-#                     new_tname = list_ex[i]['name']  # 対応するカードのnameを取得
-#                     new_cost = list_ex[i]['cost']   # 対応するカードのcostを取得
-#                     new_parameter = json.dumps({"example": "value"})  # 必要に応じて適切なパラメータを設定
-#                     search_task = task.Task(new_tid, new_tname, task_nid, new_cost, new_parameter)
-#                     tasks.append(search_task)
-#                 new_assignment = task.TaskAssignment(aid=None, tid=search_task.tid, mid=member_mid)
-#                 assignments.append(new_assignment)
-#                 member = next((member for member in filtered_members if member['mid'] == member_mid), None)
-#                 if member:
-#                     member['used_resource'] += search_task.cost
-                
-    
-#     # task-tableのデータ更新
-#     table_data = []
-#     for member in filtered_members:
-#         assigned_tasks = []
-#         for assignment in assignments:
-#             if assignment.mid == member["mid"]:
-#                 assigned_task_name = next((task.tname for task in tasks if task.tid == assignment.tid), "")
-#                 if assigned_task_name:
-#                     assigned_tasks.append(assigned_task_name)
-        
-#         # リストをカンマ区切りの文字列に変換
-#         assigned_tasks_str = ", ".join(assigned_tasks) if assigned_tasks else ""
-#         table_data.append({"mname": member["mname"], "AssignedTask": assigned_tasks_str})
-
-#     # member-tableのデータ更新
-#     member_table_data = [
-#         {
-#             "mname": member["mname"],
-#             "sprint_resource": member["sprint_resource"],
-#             "used_resource": member["used_resource"],
-#             "RemainingResource": member['sprint_resource'] - member['used_resource']
-#         }
-#         for member in filtered_members
-#     ]
-    
-#     # カードと割り当てられたタスクを比較し、割り当てられたタスクがあればカードのスタイルを変更する
-#     for i, card in enumerate(new_card_styles):
-#         card_nid = list_ex[i]['nid']  # カードのnidを取得
-#         for assignment in assignments:
-#             assigned_task = next((task for task in tasks if task.tid == assignment.tid), None)
-#             if assigned_task and assigned_task.nid == card_nid:
-#                 card['backgroundColor'] = '#d3d3d3'  # カードの背景色を変更
-#                 # 割り当て済みの人が選択されているプルダウンを表示し、選択された状態にする
-#                 assigned_member = next((member for member in filtered_members if member['mid'] == assignment.mid), None)
-#                 if assigned_member:
-#                     dropdown_id = {'type': 'dropdown', 'nid': card_nid}
-#                     dropdown_index = dropdown_ids.index(dropdown_id)
-#                     new_dropdown_styles[dropdown_index]['display'] = 'block'
-#                     new_dropdown_styles[dropdown_index]['value'] = assigned_member['mname']
-#                     new_dropdown_styles[dropdown_index]['placeholder'] = assigned_member['mname']
-
-#     # 合計コストと残りのコストを計算する
-#     total_cost_mh = total_cost
-#     total_sprint_resource = sum(member['sprint_resource'] for member in member_table_data)
-#     remaining_resource = total_sprint_resource - total_cost_mh
-
-#     return new_card_styles, f"Total Cost: {total_cost_mh} MH", new_dropdown_styles, table_data, member_table_data, f"メンバーの総スプリントリソース: {total_sprint_resource} MH, 使用可能コスト残量: {remaining_resource} MH"
-
-
-
-# # メンバーの合計リソースを計算して表示するコールバック
-# @callback(
-#     [Output('total-person-cost', 'children'),
-#      Output('remaining-person-cost', 'children')],
-#     [Input('total-cost', 'children')],
-#     [State('member-table', 'data')]
-# )
-# def update_person_cost(total_cost_text, member_data):
-#     if not total_cost_text or not member_data:
-#         raise PreventUpdate
-
-#     total_cost_mh = int(total_cost_text.split(":")[1].strip().split()[0])
-#     total_sprint_resource = sum(member['sprint_resource'] for member in member_data)
-#     remaining_resource = total_sprint_resource - total_cost_mh
-
-#     return (
-#         f"メンバーの総スプリントリソース: {total_sprint_resource} MH",
-#         f"使用可能コスト残量: {remaining_resource} MH"
-#     )
-
-    
-
-
-
-
 
 
 
