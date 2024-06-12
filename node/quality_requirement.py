@@ -7,7 +7,7 @@ class QualityRequirement(quality_node.QualityNode):
 
     #デバック用
     def __str__(self):
-        return f'QualityRequirement(nid={self.nid}, type={self.type})'
+        return f'QualityRequirement(nid={self.nid}, type={self.type}, task={self.task})'
     @staticmethod
     def get_quality_requirements():
         all_nodes = quality_node.QualityNode.fetch_all_nodes()

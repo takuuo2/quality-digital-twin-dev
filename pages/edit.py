@@ -1058,21 +1058,31 @@ def create_list_from_activities(activities, nodes,current_pid):
     current_pid = current_pid
     for activity in activities:
         content = activity.task
+        if isinstance(content, dict):
+            content = str(content.get('subchar', ''))
+        else:
+            # contentが辞書でない場合（例えば、floatの場合）を処理
+            content = str(content)
         parent_statement = None
         parent_subchar = None
         nid = activity.nid  # アクティビティの nid を取得
         pid = activity.pid
-
-        
         # 親ノードの情報を取得
+        for row in df_request[e_request].values:
+          if row[3] == content:
+            parent_statement = row[2]
+            # parent_subchar = row[1]
+            break
+        
         if activity.parents:
             parent_nid = activity.parents[0]
             parent_node = node_dict.get(parent_nid)
             if parent_node and isinstance(parent_node.task, dict):
-                parent_statement = parent_node.task.get('statement')
+                # parent_statement = parent_node.task.get('statement')
                 parent_subchar = parent_node.task.get('subchar')
-        if current_pid == str(pid) and isinstance(content, dict) and 'subchar' in content:
-            result.append({'nid': nid, 'name': content['subchar'], 'cost': 5, 'parent': parent_subchar, 'statement': parent_statement})
+        # if current_pid == str(pid) and isinstance(content, dict) and 'subchar' in content:
+        if current_pid == str(pid):
+            result.append({'nid': nid, 'name': content, 'cost': 5, 'parent': parent_subchar, 'statement': parent_statement})
         # else:
         #     result.append({'nid': nid, 'name': '不明', 'cost': 5, 'parent': parent_subchar, 'statement': parent_statement})
 
