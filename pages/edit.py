@@ -1050,18 +1050,20 @@ def tree_display(node, category, pid,indent=''):
 '''
 
 
-def create_list_from_activities(activities, nodes):
+def create_list_from_activities(activities, nodes,current_pid):
     result = []
-    
+
     # ノードの辞書を作成して、nidで検索しやすくする
     node_dict = {node.nid: node for node in nodes}
-    
+    current_pid = current_pid
     for activity in activities:
         content = activity.task
         parent_statement = None
         parent_subchar = None
         nid = activity.nid  # アクティビティの nid を取得
+        pid = activity.pid
 
+        
         # 親ノードの情報を取得
         if activity.parents:
             parent_nid = activity.parents[0]
@@ -1069,8 +1071,7 @@ def create_list_from_activities(activities, nodes):
             if parent_node and isinstance(parent_node.task, dict):
                 parent_statement = parent_node.task.get('statement')
                 parent_subchar = parent_node.task.get('subchar')
-
-        if isinstance(content, dict) and 'subchar' in content:
+        if current_pid == str(pid) and isinstance(content, dict) and 'subchar' in content:
             result.append({'nid': nid, 'name': content['subchar'], 'cost': 5, 'parent': parent_subchar, 'statement': parent_statement})
         # else:
         #     result.append({'nid': nid, 'name': '不明', 'cost': 5, 'parent': parent_subchar, 'statement': parent_statement})
@@ -1084,8 +1085,7 @@ non_achieved_activities = quality_activity.QualityActivity.get_non_achieved_acti
 # 全てのノードを取得
 all_nodes = quality_node.QualityNode.fetch_all_nodes()
 
-# ノードからリストを作成
-list_ex = create_list_from_activities(non_achieved_activities, all_nodes)
+
 
 
 # 辞書のリストをカードに変換する関数
@@ -1198,16 +1198,16 @@ def create_modal_content(list_ex, members):
                   dbc.Col(
                       html.Div(
                           "実現できる品質要求",
-                          style={'width': '90%', 'height': '90%', 'border': '1px solid #000', 'margin': '0 0 0 12px','padding': '10px', 'text-align': 'center', 'background-color': 'blue', 'color': 'white','font-weight': 'bold'}
+                          style={'width': '80%', 'height': '90%', 'border': '1px solid #000', 'margin': '0 0 0 12px','padding': '10px', 'text-align': 'center', 'font-weight': 'bold'}
                       ),
-                      width=4
+                      width=3
                   ),
                   dbc.Col(
                       html.Div( 
                           "品質活動（タスク）",
-                          style={'width': '90%', 'height': '90%', 'border': '1px solid #000', 'padding': '10px', 'text-align': 'center', 'background-color': 'dodgerblue', 'color': 'white', 'font-weight': 'bold'}
+                          style={'width': '100%', 'height': '90%', 'border': '1px solid #000', 'padding': '10px', 'text-align': 'center',  'font-weight': 'bold'}
                           ),
-                      width=5
+                      width=3
                   ),
                   dbc.Col(
                       html.Div( 
@@ -1215,11 +1215,17 @@ def create_modal_content(list_ex, members):
                           style={'width': '70px', 'height': '70px', 'borderRadius': '50%', 'border': '1px solid #000', 'padding': '10px', 'display': 'flex', 'align-items': 'center', 'justify-content': 'center', 'background-color': 'green', 'color': 'white', 'font-weight': 'bold'}
                           ),
                       width=1
-                  )
+                  ),
+                  dbc.Col(
+                      html.Div(
+                          "作業担当",
+                          style={'width': '90%', 'height': '90%', 'border': '1px solid #000', 'margin': '0 12px','padding': '10px', 'text-align': 'center', 'font-weight': 'bold'}
+                      ),
+                      width=3
+                  ),
                 ]),
-                width=9  
               ),
-              width=7
+              width=8
             ),
             dbc.Col(
                 html.Div(
@@ -1284,8 +1290,11 @@ for assignment in assignments:
                 member["used_resource"] += calc_task.cost
 
 current_pid = ""
+list_ex = []
 def edit_layout(params):
   global current_pid
+  global list_ex
+  global members
   current_pid = params.get("pid")
   # 現在のpidと一致するメンバーだけを含める
   members = [
@@ -1299,6 +1308,8 @@ def edit_layout(params):
       }
       for member in members_data if str(member.pid) == current_pid
   ]  
+  # ノードからリストを作成
+  list_ex = create_list_from_activities(non_achieved_activities, all_nodes,current_pid)
   return dbc.Container(
    [
       dbc.Row(
@@ -1436,7 +1447,8 @@ def edit_layout(params):
 
 
 @callback(
-    Output("modal-body-scroll", "is_open"),
+    [Output("modal-body-scroll", "is_open"),
+     Output("modal-body-content", "children")],
     [Input("open-body-scroll", "n_clicks"), 
      Input("close-body-scroll", "n_clicks"),
      Input("confirm-button", "n_clicks")],
@@ -1446,19 +1458,28 @@ def edit_layout(params):
 def toggle_modal(open_clicks, close_clicks, confirm_clicks, is_open, card_styles):
     ctx = dash.callback_context
     if not ctx.triggered:
-        return is_open
+        return is_open, dash.no_update
 
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
     if button_id == "open-body-scroll":
-        return True
+        global list_ex
+        global current_pid
+        # 品質活動からachievementが1ではないノードを取得
+        non_achieved_activities = quality_activity.QualityActivity.get_non_achieved_activities()
+        # 全てのノードを取得
+        all_nodes = quality_node.QualityNode.fetch_all_nodes()
+        list_ex = create_list_from_activities(non_achieved_activities, all_nodes, current_pid)
+        return True, create_modal_content(list_ex, members)
     elif button_id == "close-body-scroll":
-        return False
+        return False, dash.no_update
     elif button_id == "confirm-button":
         # 確認ボタンが押されたときの処理
         update_database()
-        return False
-    return is_open
+        return False, dash.no_update
+    return is_open, dash.no_update
+
+  
 def update_database():
   # ここにノードの更新を記述
     pass
@@ -1609,7 +1630,7 @@ def up_node(input_value, button_list, radio_list, input_list, drop_list, url):
       pid = match.group(1)
       category = match1.group(1)
     #保守性が選ばれたとき
-    drop_list = []
+    # drop_list = []
     if (button_list == []) and (radio_list == []) and (input_list == []) and (drop_list == []):
       check_node = write_db.check_node(pid,input_value)
       if check_node == 'none':
