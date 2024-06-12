@@ -1183,8 +1183,8 @@ def create_modal_content(list_ex, members):
     ]
     
     table_columns = [
-    {"name": "名前", "id": "mname"},
-    {"name": "タスク", "id": "AssignedTask"}
+    {"name": "Name", "id": "mname"},
+    {"name": "Tasks", "id": "AssignedTask"}
     ]
 
     # メンバーの情報に残りのリソースと割り当てタスクの枠（空白）を追加
