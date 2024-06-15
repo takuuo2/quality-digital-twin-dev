@@ -274,6 +274,21 @@ def select_data():
     ]
   return data
 
+#貢献度保存用変数
+save_percent = []
+def update_save_percent(num, text):
+    global save_percent
+    
+    # 既存のtextがある場合は値を更新
+    for item in save_percent:
+        if item[1] == text:
+            item[0] = num
+            return
+    
+    # 既存のtextがない場合は新しい要素を追加
+    save_percent.append([num, text])
+
+
 #左の作成
 def message_display(node,pid):
   if node is None:
@@ -625,6 +640,8 @@ def tree_display(node, category, pid,indent=''):
           text = row[2]
           break
       if ver == 1 :
+        num = calculate_contribution_percentage(node.id)
+        update_save_percent(num, text)
         tree = html.Details(
           [
             html.Summary(
@@ -672,6 +689,8 @@ def tree_display(node, category, pid,indent=''):
             )
           )
       elif ver == 2:
+        num = row[9]
+        update_save_percent(num, text)
         tree = html.Details(
           [
             html.Summary(
@@ -720,6 +739,8 @@ def tree_display(node, category, pid,indent=''):
           )
       else:
         if node.id == '修正量の低減':
+          num = calculate_contribution_percentage(node.id)
+          update_save_percent(num, node.id)
           tree = html.Details(
             [
               html.Summary(
@@ -778,6 +799,8 @@ def tree_display(node, category, pid,indent=''):
                 req_achivement +=[no_req[6]]
                 before_achivement +=[write_db.check_achievement_old(pid,row_4[7])]
                 before_achivement +=[write_db.check_achievement_old(pid,row_4[3])]
+          num = calculate_contribution_percentage(node.id)
+          update_save_percent(num, text)
           tree = html.Details(
             [
             html.Summary(
@@ -939,6 +962,8 @@ def tree_display(node, category, pid,indent=''):
           if row[3] == node.id:
             text = row[2]
             break
+        num = calculate_contribution_percentage(node.id)
+        update_save_percent(num, text)
         tree = html.Details(
           [
             html.Summary(
@@ -1054,10 +1079,11 @@ def tree_display(node, category, pid,indent=''):
 
 def create_list_from_activities(activities, nodes,current_pid):
     result = []
-
+    global save_percent
     # ノードの辞書を作成して、nidで検索しやすくする
     node_dict = {node.nid: node for node in nodes}
     current_pid = current_pid
+    percent_saved = 1
     for activity in activities:
         content = activity.task
         if isinstance(content, dict):
@@ -1079,15 +1105,39 @@ def create_list_from_activities(activities, nodes,current_pid):
         if activity.parents:
             parent_nid = activity.parents[0]
             parent_node = node_dict.get(parent_nid)
+            
             if parent_node and isinstance(parent_node.task, dict):
                 # parent_statement = parent_node.task.get('statement')
                 parent_subchar = parent_node.task.get('subchar')
         # if current_pid == str(pid) and isinstance(content, dict) and 'subchar' in content:
         if current_pid == str(pid):
-            result.append({'nid': nid, 'name': content, 'cost': 5, 'parent': parent_subchar, 'statement': parent_statement})
-        # else:
-        #     result.append({'nid': nid, 'name': '不明', 'cost': 5, 'parent': parent_subchar, 'statement': parent_statement})
-
+            contribution = None
+            for percent, text in save_percent:
+                if text == parent_statement:
+                    contribution = int(percent)
+                    break
+                if text == '修正量の低減':
+                    percent_saved = percent
+            result.append({
+                'nid': nid,
+                'name': content,
+                'cost': 5,
+                'parent': parent_subchar,
+                'statement': parent_statement,
+                'contribution': contribution  
+            })
+            # parentでソート
+        result = sorted(result, key=lambda x: (x['parent'] is None, x['parent']))
+        # '実行時に柔軟性を持たせる' または '複数のクラスで定義できるようにする' の statement を持つエントリの数を数える
+        statement_count = sum(1 for item in result if item['statement'] in ['実行時に柔軟性を持たせる', '複数のクラスで定義できるようにする'])
+        # result 内の各エントリをチェックして、contribution を設定
+        for item in result:
+            if item['statement'] in ['実行時に柔軟性を持たせる', '複数のクラスで定義できるようにする']:
+                if statement_count > 1:
+                    item['contribution'] = int(percent_saved * 0.5)
+                    
+                else:
+                    item['contribution'] = percent_saved
     return result
 
 
@@ -1113,6 +1163,17 @@ def create_list_items(items, members):
                                     [
                                         dbc.Col(
                                             html.Div(
+                                                f"{item['contribution']}%",  # 数字に%を付ける
+                                                style={
+                                                    'width': '50px', 'height': '100%', 'border': '1px solid #000',
+                                                    'padding': '10px', 'textAlign': 'center', 'backgroundColor': 'lightgray',
+                                                    'color': 'black', 'fontWeight': 'bold', 'fontSize': '14px',
+                                                }
+                                            ),
+                                            width=1
+                                        ),
+                                        dbc.Col(
+                                            html.Div(
                                                 [
                                                     html.Div(item['parent'], style={'font-size': '18px', 'font-weight': 'bold'}),
                                                     html.Div(item['statement'], style={'font-size': '14px', 'font-weight': 'normal'})
@@ -1123,7 +1184,7 @@ def create_list_items(items, members):
                                         ),
                                         dbc.Col(
                                             html.Div(item['name'], style={'width': '100%', 'height': '100%', 'border': '1px solid #000', 'padding': '10px', 'text-align': 'center', 'background-color': 'dodgerblue', 'color': 'white', 'font-weight': 'bold'}),
-                                            width=5
+                                            width=4
                                         ),
                                         dbc.Col(
                                             html.Div(f"{item['cost']} MH", style={'width': '70px', 'height': '70px', 'borderRadius': '50%', 'border': '1px solid #000', 'padding': '10px', 'display': 'flex', 'align-items': 'center', 'justify-content': 'center', 'background-color': 'green', 'color': 'white', 'font-weight': 'bold'}),
@@ -1209,10 +1270,17 @@ def create_modal_content(list_ex, members):
                 dbc.Row([
                   dbc.Col(
                       html.Div(
-                          "実現できる品質要求",
-                          style={'width': '80%', 'height': '90%', 'border': '1px solid #000', 'margin': '0 0 0 12px','padding': '10px', 'text-align': 'center', 'font-weight': 'bold'}
+                          "保守性への貢献度",
+                          style={'width': '100%', 'height': '90%', 'border': '1px solid #000', 'padding': '10px', 'text-align': 'center', 'font-weight': 'bold','fontSize':'8px'}
                       ),
-                      width=3
+                      width=1
+                  ),
+                  dbc.Col(
+                      html.Div(
+                          "実現できる品質要求",
+                          style={'width': '80%', 'height': '90%', 'border': '1px solid #000', 'margin': '0 0 0 12px','padding': '10px', 'text-align': 'center', 'font-weight': 'bold','fontSize':'13px'}
+                      ),
+                      width=2
                   ),
                   dbc.Col(
                       html.Div( 
@@ -1529,12 +1597,18 @@ def update_database():
 
             # TaskAssignmentテーブルの更新
             for assignment in assignments:
-                assignment_query = """
+                # 既存のレコードを削除するクエリ
+                delete_query = """
+                DELETE FROM task_assignment WHERE tid = %s
+                """
+                cursor.execute(delete_query, (assignment.tid,))
+                
+                # 新しいレコードを挿入するクエリ
+                insert_query = """
                 INSERT INTO task_assignment (tid, mid)
                 VALUES (%s, %s)
                 """
-                cursor.execute(assignment_query, (assignment.tid, assignment.mid))
-
+                cursor.execute(insert_query, (assignment.tid, assignment.mid))
         # トランザクションをコミット
         connector.commit()
 

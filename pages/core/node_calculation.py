@@ -18,7 +18,10 @@ class TreeNode:
         child_node.parent = self
     def is_leaf(self):
         return len(self.children) == 0
-
+    def __str__(self):
+        parent_id = self.parent.id if self.parent else None
+        children_ids = [child.id for child in self.children]
+        return f"Node: {self.id}, Contribution: {self.contribution}, Parent: {parent_id}, Children: {children_ids}, Other: {self.other}, Type: {self.type}"
 
 #木構造の作成
 def create_tree(pid,parent_node_value, parent_node=None):
