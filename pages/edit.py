@@ -587,6 +587,8 @@ def tree_display(node, category, pid,indent=''):
       com = '達成:'+str(now)+'%'
     if node.type == 'REQ':
       if node.id == '保守性':
+        num = calculate_contribution_percentage(node.id)
+        update_save_percent(num, node.id)
         tree = html.Details(
           [
             html.Summary(
@@ -609,6 +611,8 @@ def tree_display(node, category, pid,indent=''):
           open=True
           )
       else:
+        num = calculate_contribution_percentage(node.id)
+        update_save_percent(num, node.id)
         tree = html.Details(
           [
             html.Summary(
@@ -1118,6 +1122,12 @@ def create_list_from_activities(activities, nodes,current_pid):
                     break
                 if text == '修正量の低減':
                     percent_saved = percent
+            for percent, text in save_percent:
+                if text == parent_subchar:
+                  if contribution != None:
+                    contribution = contribution * percent * 0.01
+                    contribution = round(contribution, 1)
+                    break
             result.append({
                 'nid': nid,
                 'name': content,
@@ -1167,7 +1177,7 @@ def create_list_items(items, members):
                                                 style={
                                                     'width': '50px', 'height': '100%', 'border': '1px solid #000',
                                                     'padding': '10px', 'textAlign': 'center', 'backgroundColor': 'lightgray',
-                                                    'color': 'black', 'fontWeight': 'bold', 'fontSize': '14px',
+                                                    'color': 'black', 'fontWeight': 'bold', 'fontSize': '12px',
                                                 }
                                             ),
                                             width=1
