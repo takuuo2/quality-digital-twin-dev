@@ -693,8 +693,6 @@ def tree_display(node, category, pid,indent=''):
             )
           )
       elif ver == 2:
-        num = row[9]
-        update_save_percent(num, text)
         tree = html.Details(
           [
             html.Summary(
@@ -1080,7 +1078,7 @@ def tree_display(node, category, pid,indent=''):
 ・right_free = データを表示する（実現，活動の情報）
 '''
 
-
+#ウィンドウに表示させるリストを作成する関数
 def create_list_from_activities(activities, nodes,current_pid):
     result = []
     global save_percent
@@ -1103,9 +1101,12 @@ def create_list_from_activities(activities, nodes,current_pid):
         for row in df_request[e_request].values:
           if row[3] == content:
             parent_statement = row[2]
-            # parent_subchar = row[1]
+            task_cost = row[10]
             break
-        
+        #taskのコスト情報の更新
+        for task in tasks:
+          if task.nid == nid:
+            task.cost = task_cost
         if activity.parents:
             parent_nid = activity.parents[0]
             parent_node = node_dict.get(parent_nid)
@@ -1116,6 +1117,8 @@ def create_list_from_activities(activities, nodes,current_pid):
         # if current_pid == str(pid) and isinstance(content, dict) and 'subchar' in content:
         if current_pid == str(pid):
             contribution = None
+            if(parent_statement == '実行時に柔軟性を持たせる'or'複数のクラスで定義できるようにする'):
+              contribution = 1
             for percent, text in save_percent:
                 if text == parent_statement:
                     contribution = int(percent)
@@ -1131,36 +1134,38 @@ def create_list_from_activities(activities, nodes,current_pid):
             result.append({
                 'nid': nid,
                 'name': content,
-                'cost': 5,
+                'cost': task_cost,
                 'parent': parent_subchar,
                 'statement': parent_statement,
                 'contribution': contribution  
             })
             # parentでソート
         result = sorted(result, key=lambda x: (x['parent'] is None, x['parent']))
-        # '実行時に柔軟性を持たせる' または '複数のクラスで定義できるようにする' の statement を持つエントリの数を数える
-        statement_count = sum(1 for item in result if item['statement'] in ['実行時に柔軟性を持たせる', '複数のクラスで定義できるようにする'])
-        # result 内の各エントリをチェックして、contribution を設定
-        for item in result:
-            if item['statement'] in ['実行時に柔軟性を持たせる', '複数のクラスで定義できるようにする']:
-                if statement_count > 1:
-                    item['contribution'] = int(percent_saved * 0.5)
-                    
-                else:
-                    item['contribution'] = percent_saved
+    # '実行時に柔軟性を持たせる' または '複数のクラスで定義できるようにする' の statement を持つエントリの数を数える
+    statement_count = sum(1 for item in result if item['name'] in ['実行時バインディング成功率', 'ポリモフィズム使用率'])
+    # result 内の各エントリをチェックして、contribution を設定
+    for item in result:
+        if item['name'] in ['実行時バインディング成功率', 'ポリモフィズム使用率']:
+            if(item['contribution'] != None):
+              if statement_count > 1:
+                  item['contribution'] = percent_saved * 0.5 * item['contribution']
+              else:
+                  item['contribution'] = percent_saved * item['contribution']
     return result
 
 
+ 
 # 品質活動からachievementが1ではないノードを取得
 non_achieved_activities = quality_activity.QualityActivity.get_non_achieved_activities()
 
 # 全てのノードを取得
 all_nodes = quality_node.QualityNode.fetch_all_nodes()
 
+assignments = task.TaskAssignment.fetch_all_assignments()
+tasks = task.Task.fetch_all_tasks() 
 
 
-
-# 辞書のリストをカードに変換する関数
+# リストをカードに変換する関数
 def create_list_items(items, members):
     return [
         html.Div(
@@ -1230,9 +1235,7 @@ def create_list_items(items, members):
 
 
 
-
-assignments = task.TaskAssignment.fetch_all_assignments()
-tasks = task.Task.fetch_all_tasks()    
+  
 # モーダルウィンドウ内の要素を作成する関数
 def create_modal_content(list_ex, members):
     # 新しいメンバー表用の列とデータ
@@ -1272,7 +1275,14 @@ def create_modal_content(list_ex, members):
         assigned_tasks_str = ", ".join(assigned_tasks) if assigned_tasks else ""
         table_data.append({"mname": member["mname"], "AssignedTask": assigned_tasks_str})
 
-
+    negative_value_style = [
+        {
+            'if': {
+                'filter_query': '{RemainingResource} < 0'  # RemainingResource が負の値の場合
+            },
+            'color': 'red'  # 文字を赤くする
+        }
+    ]
     return dbc.Row(
         [   
             dbc.Col(
@@ -1327,20 +1337,16 @@ def create_modal_content(list_ex, members):
             dbc.Col(
                 html.Div(
                     [
-                        # dcc.Dropdown(
-                        #     id='person-select',
-                        #     options=[
-                        #         {'label': f'{i} 人', 'value': i} for i in range(1, 100)
-                        #     ],
-                        #     value=1
-                        # ),
+                        
+                        
                         dash_table.DataTable(
                             id='member-table',
                             columns=member_table_columns,
                             data=member_table_data,
                             style_table={'height': '40%', 'overflowY': 'auto','marginBottom': '0px'},
                             style_cell={'textAlign': 'center'},
-                            style_header={'fontWeight': 'bold'},
+                            style_header={'fontWeight': 'bold','fontSize':'12px'},
+                            style_data_conditional=negative_value_style
                         ),
                         html.Div(id='total-person-cost', style={'border': '1px solid #000', 'padding': '10px', 'marginTop': '5px', 'textAlign': 'center', 'font-weight': 'bold'}),
                         html.Div(id='remaining-person-cost', style={'border': '1px solid #000', 'padding': '10px', 'marginTop': '5px', 'textAlign': 'center', 'font-weight': 'bold'}),
@@ -1764,8 +1770,7 @@ def update_selection(n_clicks, selected_values, card_styles, dropdown_styles, dr
     else:
       total_cost_mh = total_cost
     total_sprint_resource = sum(member['sprint_resource'] for member in member_table_data)
-    remaining_resource = total_sprint_resource - total_cost_mh
-
+    remaining_resource = sum(member["RemainingResource"] for member in member_table_data)
     return new_card_styles, f"Total Cost: {total_cost_mh} MH", new_dropdown_styles, table_data, member_table_data, f"メンバーの総スプリントリソース: {total_sprint_resource} MH", f"使用可能コスト残量: {remaining_resource} MH"
 
 
